@@ -25,7 +25,7 @@ class DataCaptureModel:
         self.matrices = {}
 
     def write_to_file(self):
-        with open('transformation_matrix.json', 'w', encoding='utf-8') as f:
+        with open(self.file_name, 'w', encoding='utf-8') as f:
             camera_intrinsics = self.__camera_intrinsics.__dict__
             frames = {"frames": [frame.__dict__ for frame in self.frames]}
 
@@ -39,7 +39,7 @@ class DataCaptureModel:
         return z
 
 if __name__ == "__main__":
-    data_capture = DataCaptureModel("test.json")
+    data_capture = DataCaptureModel("images/transforms.json")
 
     test_1 = math_helpers.SE3Pose(0, 0, 0, math_helpers.Quat(0, 2, 0, 0))
     test_2 = math_helpers.SE3Pose(1, 2, 3, math_helpers.Quat(0, 1, 0, 0))
