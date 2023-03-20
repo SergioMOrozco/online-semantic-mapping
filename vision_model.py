@@ -6,6 +6,7 @@ import math
 import time
 import bosdyn.client
 import bosdyn.client.util
+import uuid
 from bosdyn.client.image import ImageClient
 from bosdyn.api import image_pb2
 from bosdyn.api import network_compute_bridge_pb2
@@ -35,6 +36,7 @@ class VisionModel:
         # We want to capture from one camera at a time.
 
         # Capture and save images to disk
+        file_name = "images/" + str(uuid.uuid4()) + ".png"
         image_responses = self.image_client.get_image_from_sources([source])
 
         dtype = np.uint8
@@ -63,6 +65,10 @@ class VisionModel:
 
         if seed_tform_body == None:
             print("Forgot to upload map")
+            return None, None
 
+        cv2.imwrite(file_name, img)
         seed_tform_vision = seed_tform_body * body_tform_vision
         print("seed tfrom vision: ", seed_tform_vision)
+
+        return seed_tform_vision, file_name

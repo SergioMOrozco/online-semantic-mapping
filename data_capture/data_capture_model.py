@@ -43,6 +43,7 @@ if __name__ == "__main__":
 
     test_1 = math_helpers.SE3Pose(0, 0, 0, math_helpers.Quat(0, 2, 0, 0))
     test_2 = math_helpers.SE3Pose(1, 2, 3, math_helpers.Quat(0, 1, 0, 0))
+
     data_capture.set_camera_instrinsics(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13)
 
     data_capture.add_frame("test_1.png", test_1.to_matrix())

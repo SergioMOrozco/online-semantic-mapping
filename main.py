@@ -12,13 +12,13 @@ import sys
 import copy
 import time
 import random
-from bosdyn.client import math_helpers
-
-import graph_nav_util
-import pickle
-from threading import Thread
 import bosdyn.client.channel
 import bosdyn.client.util
+import graph_nav_util
+import pickle
+from bosdyn.client import math_helpers
+from data_capture.data_capture_model import DataCaptureModel
+from threading import Thread
 from vision_model import VisionModel
 from bosdyn.client.network_compute_bridge_client import NetworkComputeBridgeClient
 from bosdyn.client.manipulation_api_client import ManipulationApiClient
@@ -79,6 +79,7 @@ class GraphNavInterface(object):
         self._network_compute_client = self._robot.ensure_client(NetworkComputeBridgeClient.default_service_name)
 
         self.vision_model = VisionModel(self._graph_nav_client, self._network_compute_client, self._robot)
+        self.data_capture_model = DataCaptureModel("images/transforms.json")
 
         # Boolean indicating the robot's power state.
         power_state = self._robot_state_client.get_robot_state().power_state
@@ -114,7 +115,8 @@ class GraphNavInterface(object):
             '10': self._navigate_all,
             '11': self._blocking_stand,
             '12': self._open_gripper_and_stow,
-            '13': self._take_picture
+            '13': self._take_picture,
+            '14': self._save_frames
         }
 
 
@@ -490,8 +492,13 @@ class GraphNavInterface(object):
                     return map_pb2.Edge.Id(from_waypoint=waypoint1, to_waypoint=waypoint2)
         return None
     def _take_picture (self, *args):
-        self.vision_model.get_image("hand_color_image")
+        frame, image_name = self.vision_model.get_image("hand_color_image")
 
+        if not frame is None:
+            self.data_capture_model.add_frame(image_name, frame)
+
+    def _save_frames(self, *args):
+        self.data_capture_model.write_to_file()
 
     def _navigate_all(self, *args):
 
@@ -552,6 +559,7 @@ class GraphNavInterface(object):
             (11) Stand up
             (12) Open gripper and stow
             (13) take picture
+            (14) save frames 
             (q) Exit.
             """)
 
