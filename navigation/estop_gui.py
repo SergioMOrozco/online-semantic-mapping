@@ -45,7 +45,7 @@ STOP_BUTTON_STYLESHEET = ("background-color: red; font: bold 60px; border-width:
 RELEASE_BUTTON_STYLESHEET = ("background-color: green; border-width: 5px; border-radius:20px; "
                              "padding: 10px")
 ERROR_LABEL_STYLESHEET = 'font: bold 15px'
-HOSTNAME = "138.16.161.12"
+HOSTNAME = "138.16.161.22"
 
 
 class EstopGui(QtWidgets.QMainWindow):

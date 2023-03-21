@@ -1,7 +1,7 @@
 import json
 from bosdyn.client import math_helpers
-from frame import Frame
-from camera_intrinsics import CameraIntrinsics
+from data_capture.frame import Frame
+from data_capture.camera_intrinsics import CameraIntrinsics
 
 class DataCaptureModel:
     def __init__(self, file_name):
@@ -28,6 +28,7 @@ class DataCaptureModel:
         with open(self.file_name, 'w', encoding='utf-8') as f:
             camera_intrinsics = self.__camera_intrinsics.__dict__
             frames = {"frames": [frame.__dict__ for frame in self.frames]}
+            print(frames)
 
             j = self.__merge_two_dicts(camera_intrinsics, frames)
 

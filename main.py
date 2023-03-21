@@ -42,10 +42,10 @@ from collections import defaultdict
 
 import numpy as np
 
-# HOSTNAME = "138.16.161.22"         #02
+HOSTNAME = "138.16.161.22"         #02
 #HOSTNAME = "192.168.80.3"           #12
-HOSTNAME = "138.16.161.12"           #12
-UPLOAD_FILEPATH = "./navigation/maps/downloaded_graph"
+#HOSTNAME = "138.16.161.12"           #12
+UPLOAD_FILEPATH = "./navigation/maps/downloaded_graph_22"
 #UPLOAD_FILEPATH = "./navigation/maps/cit121_02/downloaded_graph"
 # UPLOAD_FILEPATH = "./navigation/maps/cit121_115_02/downloaded_graph"
 #UPLOAD_FILEPATH = "./navigation/maps/cit121_115_12/downloaded_graph"
@@ -493,6 +493,7 @@ class GraphNavInterface(object):
         return None
     def _take_picture (self, *args):
         frame, image_name = self.vision_model.get_image("hand_color_image")
+        frame = frame.to_matrix()
 
         if not frame is None:
             self.data_capture_model.add_frame(image_name, frame)
@@ -522,11 +523,12 @@ class GraphNavInterface(object):
                 try:
                     print("Waypoint:", waypoint)
                     self._navigate_to([waypoint])
+                    self._take_picture()
                 except:
                     continue
 
-        print("storing objects.")
-        self.vision_model.save_objects_detected()
+        # print("storing objects.")
+        # self.vision_model.save_objects_detected()
 
     def _on_quit(self):
         """Cleanup on quit from the command line interface."""
