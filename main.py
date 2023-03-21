@@ -519,7 +519,7 @@ class GraphNavInterface(object):
 
             print("NOT VISITING ALL WAYPOINTS OFR TESTING PURPOSES")
 
-            for waypoint in waypoints[:10]:
+            for waypoint in waypoints[:40]:
                 try:
                     print("Waypoint:", waypoint)
                     self._navigate_to([waypoint])
