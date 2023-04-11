@@ -1,12 +1,16 @@
 import rospy
 from sensor_msgs.msg import Image
+from geometry_msgs.msg import PoseWithCovarianceStamped
 from cv_bridge import CvBridge
 from gazebo_msgs.msg import LinkStates
 import cv2
 import os
 import uuid
 import numpy as np
+import math
+import glob
 from data_capture_model import DataCaptureModel
+from scipy.spatial.transform import Rotation as R
 #from bosdyn.client import math_helpers
 
 class Nodo(object):
@@ -14,6 +18,7 @@ class Nodo(object):
         # Params
         self.link_name = link_name
         self.image = None
+        self.transformation_matrix = None
         self.br = CvBridge()
         # Node cycle rate (in Hz).
         self.loop_rate = rospy.Rate(30)
@@ -23,7 +28,39 @@ class Nodo(object):
 
         # Subscribers
         rospy.Subscriber("/camera/rgb/image_raw",Image,self.callback_camera)
-        rospy.Subscriber("/gazebo/link_states",LinkStates,self.callback_pose)
+        rospy.Subscriber("/amcl_pose",PoseWithCovarianceStamped,self.callback_pose)
+
+    def get_rotation_from(self, yaw, pitch, roll):
+        yaw_rotation = np.array([[math.cos(yaw),-math.sin(yaw),0],
+                        [math.sin(yaw),math.cos(yaw),0],
+                        [0,0,1]])
+
+        pitch_rotation = np.array([[math.cos(pitch),0,math.sin(pitch)],
+                        [0,1,0],
+                        [-math.sin(pitch),0,math.cos(pitch)]])
+
+        roll_rotation = np.array([[1,0,0],
+                        [0,math.cos(roll),-math.sin(roll)],
+                        [0,math.sin(roll),math.cos(roll)]])
+
+        return np.dot(yaw_rotation,np.dot(pitch_rotation,roll_rotation))
+
+    def qvec2rotmat(self,qvec):
+        return np.array([
+		[
+			1 - 2 * qvec[2]**2 - 2 * qvec[3]**2,
+			2 * qvec[1] * qvec[2] - 2 * qvec[0] * qvec[3],
+			2 * qvec[3] * qvec[1] + 2 * qvec[0] * qvec[2]
+		], [
+			2 * qvec[1] * qvec[2] + 2 * qvec[0] * qvec[3],
+			1 - 2 * qvec[1]**2 - 2 * qvec[3]**2,
+			2 * qvec[2] * qvec[3] - 2 * qvec[0] * qvec[1]
+		], [
+			2 * qvec[3] * qvec[1] - 2 * qvec[0] * qvec[2],
+			2 * qvec[2] * qvec[3] + 2 * qvec[0] * qvec[1],
+			1 - 2 * qvec[1]**2 - 2 * qvec[2]**2
+		]
+	])
 
     def quaternion_rotation_matrix(self,Q):
         """
@@ -67,36 +104,86 @@ class Nodo(object):
 
     def callback_pose(self, data):
         try:
-          ind = data.name.index(self.link_name)
-          self.link_pose = data.pose[ind]
+          #ind = data.name.index(self.link_name)
+          #self.link_pose = data.pose[ind]
+          self.link_pose = data.pose.pose
           #print(data)
+
+          bottom = np.array([0.0, 0.0, 0.0, 1.0]).reshape([1, 4])
 
 
           x = self.link_pose.position.x
           y = self.link_pose.position.y
           z = self.link_pose.position.z
 
+          t = np.array([z,x,y]).reshape([3,1])
+          #t = np.array([x,y,z]).reshape([3,1])
 
           rotation = [
                     self.link_pose.orientation.w,
                     self.link_pose.orientation.x,
                     self.link_pose.orientation.y,
-                    self.link_pose.orientation.z]
+                    self.link_pose.orientation.z,
+                    ]
 
-          rotation_matrix = self.quaternion_rotation_matrix(rotation)
+          qw = self.link_pose.orientation.w
+          qx = self.link_pose.orientation.x
+          qy = self.link_pose.orientation.y
+          qz = self.link_pose.orientation.z
 
-          T = np.array([x,y,z])
-          T.shape = (3,1)
 
-          tmp = np.hstack((rotation_matrix,T))
+          #roll = math.atan2(2 * rotation[2] * rotation[0] - 2 * rotation[1] * rotation[3], 1 -2 *rotation[2] * rotation[2] - 2 * rotation[3] * rotation[3])
+          #pitch = math.atan2(2 * rotation[1] * rotation[0] - 2 * rotation[2] * rotation[3], 1 -2 *rotation[1] * rotation[1] - 2 * rotation[3] * rotation[3])
+          #yaw = math.asin(2 * rotation[1] * rotation[2] + 2 * rotation[3] * rotation[0])
 
-          newrow = [0,0,0,1]
-          self.transformation_matrix = np.vstack([tmp, newrow])
+          yaw = math.atan2(2*(rotation[0] * rotation[3] + rotation[1] * rotation[2]), 1 - 2 * (rotation[2] * rotation[2] + rotation[3] * rotation[3]))
+          #yaw = math.atan2(2.0*(qy*qz + qw*qx), qw*qw - qx*qx - qy*qy + qz*qz)
+
+          #rotation_matrix= np.array([[math.cos(yaw),-math.sin(yaw),0],
+          #              [math.sin(yaw),math.cos(yaw),0],
+          #              [0,0,1]])
+          #rotation_matrix= np.array([[1,0,0],
+          #              [0,1,0],
+          #              [0,0,1]])
+          rotation_matrix = self.get_rotation_from(-math.pi/2,math.pi/2 + yaw,0)
+
+          #rotation_matrix = np.array([[1,0,0],
+          #              [0,math.cos(yaw),-math.sin(yaw)],
+          #              [0,math.sin(yaw),math.cos(yaw)]])
+
+
+
+          #rotation_matrix = self.get_rotation_from(yaw,pitch,roll)
+
+          #rotation_matrix = self.quaternion_rotation_matrix(rotation)
+
+          #rotation_matrix = self.qvec2rotmat(rotation)
+
+          self.transformation_matrix = np.concatenate([np.concatenate([rotation_matrix, t], 1), bottom], 0)
+          #self.transformation_matrix = np.linalg.inv(self.transformation_matrix)
+
+
+
+
+
+
+          #rotation_matrix = np.transpose(R.from_quat(rotation).as_matrix())
+          #print(rotation_matrix)
+
+          #T = np.array([x,y,z])
+          #T.shape = (3,1)
+
+          #tmp = np.hstack((rotation_matrix,T))
+
+          #newrow = [0,0,0,1]
+          #self.transformation_matrix = np.vstack([tmp, newrow])
+
+
 
         except ValueError:
           pass
     def callback_camera(self, msg):
-        rospy.loginfo('Image received...')
+        #rospy.loginfo('Image received...')
         self.image = self.br.imgmsg_to_cv2(msg)
 
         #cv2.imshow('image',self.image)
@@ -106,21 +193,29 @@ class Nodo(object):
 
 
     def start(self):
-        data_capture_model = DataCaptureModel("images/transforms.json")
+
+
+        files = glob.glob('/home/sorozco0612/dev/instant-ngp/data/nerf/simulator/images/*')
+        for f in files:
+            os.remove(f)
+        data_capture_model = DataCaptureModel("/home/sorozco0612/dev/instant-ngp/data/nerf/simulator/transforms.json")
         rospy.loginfo("Timing images")
         #rospy.spin()
         while not rospy.is_shutdown():
-            rospy.loginfo('publishing image')
-            if self.image is not None:
+            if self.image is not None and self.transformation_matrix is not None:
+                #rospy.loginfo('publishing image')
                 file_name = "images/" + str(uuid.uuid4()) + ".png"
 
                 data_capture_model.add_frame(file_name, self.transformation_matrix)
-                cv2.imwrite(file_name, self.image)
+                cv2.imwrite("/home/sorozco0612/dev/instant-ngp/data/nerf/simulator/" + file_name, self.image)
 
                 cv2.imshow('image',self.image)
                 data_capture_model.write_to_file()
 
-                print(self.transformation_matrix)
+                #print(self.transformation_matrix)
+
+                self.image = None
+                self.transformation_matrix = None
 
                 cv2.waitKey(1)
             self.loop_rate.sleep()
