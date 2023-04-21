@@ -15,10 +15,14 @@ from bosdyn.client import frame_helpers
 from bosdyn.client import math_helpers
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
+from bosdyn.client.network_compute_bridge_client import NetworkComputeBridgeClient
+from bosdyn.client.graph_nav import GraphNavClient
 
 MODEL_NAME = "handle-model"
 HAND_MODEL = 'object-hand-model'
 SERVER_NAME = "fetch-server"
+#HOSTNAME = "138.16.161.12"
+HOSTNAME = "tusker.rlab.cs.brown.edu"
 
 
 class VisionModel:
@@ -31,12 +35,15 @@ class VisionModel:
         self.network_compute_client = network_compute_client
         self.robot = robot
         self.image_client = robot.ensure_client(ImageClient.default_service_name)
+        self.i = 0
 
     def get_image(self, source):
         # We want to capture from one camera at a time.
 
         # Capture and save images to disk
-        file_name = "images/" + str(uuid.uuid4()) + ".png"
+        file_name = "images/" + str(self.i) +".png"
+        self.i += 1
+
         image_responses = self.image_client.get_image_from_sources([source])
 
         dtype = np.uint8
@@ -70,5 +77,24 @@ class VisionModel:
         cv2.imwrite(file_name, img)
         seed_tform_vision = seed_tform_body * body_tform_vision
         print("seed tfrom vision: ", seed_tform_vision)
+        print("filename", file_name)
 
         return seed_tform_vision, file_name
+if __name__ == "__main__":
+    sdk = bosdyn.client.create_standard_sdk('GraphNavClient')
+    sdk.register_service_client(NetworkComputeBridgeClient)
+    robot = sdk.create_robot(HOSTNAME)
+    bosdyn.client.util.authenticate(robot)
+
+    graph_nav_client = robot.ensure_client(GraphNavClient.default_service_name)
+
+    network_compute_client = robot.ensure_client(NetworkComputeBridgeClient.default_service_name)
+
+    vision_model = VisionModel(graph_nav_client, network_compute_client, robot)
+    while True:
+        start = time.time() # gives current time in seconds since Jan 1, 1970 (in Unix)
+        vision_model.get_image("hand_color_image")
+        while True:
+            current_time = time.time()
+            if current_time - start >= 1.0/30.0:
+                break
