@@ -1,3 +1,4 @@
+
 import os
 import glob
 import tqdm
@@ -31,6 +32,9 @@ from torch_ema import ExponentialMovingAverage
 from packaging import version as pver
 import lpips
 from torchmetrics.functional import structural_similarity_index_measure
+
+
+SEMANTIC_CLASS_NUM = 100
 
 def custom_meshgrid(*args):
     # ref: https://pytorch.org/docs/stable/generated/torch.meshgrid.html?highlight=meshgrid#torch.meshgrid
@@ -478,6 +482,8 @@ class Trainer(object):
 
         # if there is no gt image, we train with CLIP loss.
         if 'images' not in data:
+            print("This should not happen")
+            exit()
 
             B, N = rays_o.shape[:2]
             H, W = data['H'], data['W']
@@ -539,22 +545,24 @@ class Trainer(object):
         pred_semantic = pred_semantic.view(pred_semantic.shape[0],pred_semantic.shape[2],pred_semantic.shape[1])
         #pred_semantic = pred_semantic.long()
 
+
         gt_semantics = gt_semantics.view(gt_semantics.shape[0],gt_semantics.shape[1])
         gt_semantics = gt_semantics.long()
 
-        # print("SEMANTICS")
-        # print("PRED")
-        # print(pred_semantic.shape)
-        # print(pred_semantic.dtype)
-        # print("GT")
-        # print(gt_semantics.shape)
-        # print(gt_semantics.dtype)
-        # print(pred_semantic)
+        #print("SEMANTICS")
+        #print("PRED")
+        #print(pred_semantic.shape)
+        #print(pred_semantic.dtype)
+        #print(pred_semantic)
+        #print("GT")
+        #print(gt_semantics.shape)
+        #print(gt_semantics.dtype)
+        #print(gt_semantics)
         #
         # print(gt_semantics)
         # exit()
 
-        loss_semantic = self.semantic_criterion(pred_semantic, gt_semantics) # [B, N, 1] --> [B, N]
+        loss_semantic = self.semantic_criterion(pred_semantic, gt_semantics).mean(-1) # [B, N, 1] --> [B, N]
 
         # print("HELLO")
         # print(loss_semantic)
@@ -599,6 +607,8 @@ class Trainer(object):
             # put back
             self.error_map[index] = error_map
 
+        loss = loss + ( 0.04 * loss_semantic)
+
         loss = loss.mean()
 
         # extra loss
@@ -606,10 +616,11 @@ class Trainer(object):
         # loss_ws = - 1e-1 * pred_weights_sum * torch.log(pred_weights_sum) # entropy to encourage weights_sum to be 0 or 1.
         # loss = loss + loss_ws.mean()
 
-        return pred_rgb, gt_rgb, loss + loss_semantic
+        return pred_rgb, gt_rgb, loss
         #return pred_rgb, gt_rgb, loss 
 
     def eval_step(self, data):
+        print("Am I no doing eval for the semantic image?")
 
         rays_o = data['rays_o'] # [B, N, 3]
         rays_d = data['rays_d'] # [B, N, 3]
@@ -649,8 +660,9 @@ class Trainer(object):
 
         pred_rgb = outputs['image'].reshape(-1, H, W, 3)
         pred_depth = outputs['depth'].reshape(-1, H, W)
-        # This is where render happens
-        pred_semantic = outputs['semantic'].reshape(-1, H, W, 100)
+        pred_semantic = outputs['semantic'].reshape(-1, H, W,SEMANTIC_CLASS_NUM)
+
+
 
         return pred_rgb, pred_depth,pred_semantic
 
@@ -829,7 +841,8 @@ class Trainer(object):
     
     # [GUI] test on a single image
     def test_gui(self, pose, intrinsics, W, H, bg_color=None, spp=1, downscale=1):
-        
+        print("test gui")
+
         # render resolution (may need downscale to for better frame rate)
         rH = int(H * downscale)
         rW = int(W * downscale)
@@ -862,6 +875,7 @@ class Trainer(object):
 
         # interpolation to the original resolution
         if downscale != 1:
+            # TODO: IDK what this is
             # TODO: have to permute twice with torch...
             preds = F.interpolate(preds.permute(0, 3, 1, 2), size=(H, W), mode='nearest').permute(0, 2, 3, 1).contiguous()
             preds_semantic = F.interpolate(preds_semantic.permute(0, 3, 1, 2), size=(H, W), mode='nearest').permute(0, 2, 3, 1).contiguous()
@@ -870,9 +884,27 @@ class Trainer(object):
         if self.opt.color_space == 'linear':
             preds = linear_to_srgb(preds)
 
-        pred = preds[0].detach().cpu().numpy()
         pred_semantic = preds_semantic[0].detach().cpu().numpy()
+
+
+        pred_semantic = pred_semantic.argmax(axis=2)
+
+        #arg_maxes = pred_semantic.argmax(axis=2)
+        #m,n = pred_semantic.shape[:2]
+        #I,J = np.ogrid[:m,:n]
+        #pred_semantic = pred_semantic[I,J,arg_maxes]
+
+        pred = preds[0].detach().cpu().numpy()
+        #pred_semantic = preds_semantic[0].detach().cpu().numpy()
         pred_depth = preds_depth[0].detach().cpu().numpy()
+
+
+        #print("image")
+        #print(pred)
+        #print(pred.shape)
+        #print("semantic")
+        #print(pred_semantic)
+        #print(pred_semantic.shape)
 
         outputs = {
             'image': pred,

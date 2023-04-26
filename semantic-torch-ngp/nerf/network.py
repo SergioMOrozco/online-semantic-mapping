@@ -84,6 +84,7 @@ class NeRFNetwork(NeRFRenderer):
             for l in range(num_layers_semantic):
                 if l == 0:
                     in_dim = self.in_dim_dir + self.geo_feat_dim
+                    #in_dim = self.geo_feat_dim
                 else:
                     in_dim = hidden_dim_semantic
                 
@@ -140,6 +141,8 @@ class NeRFNetwork(NeRFRenderer):
         sigma = trunc_exp(h[..., 0])
         geo_feat = h[..., 1:]
 
+        semantic_h = geo_feat
+
         # Note encode direction for both color and semantic
         d = self.encoder_dir(d)
 
@@ -160,6 +163,7 @@ class NeRFNetwork(NeRFRenderer):
         # NOTE: This is where density is fed into color
         # TODO: I dont think semantic takes in viewing direction
         h = torch.cat([d, geo_feat], dim=-1)
+        #h = semantic_h
         for l in range(self.num_layers_semantic):
             h = self.semantic_net[l](h)
             if l != self.num_layers_semantic - 1:
@@ -168,7 +172,7 @@ class NeRFNetwork(NeRFRenderer):
         semantic = h
         
         # sigmoid activation for rgb
-        #color = torch.sigmoid(h)
+        semantic = torch.relu(h)
 
         return sigma, color, semantic
 
@@ -264,7 +268,7 @@ class NeRFNetwork(NeRFRenderer):
                 h = F.relu(h, inplace=True)
         
         # sigmoid activation for rgb
-        h = torch.sigmoid(h)
+        h = torch.relu(h)
 
 
         if mask is not None:
@@ -287,6 +291,7 @@ class NeRFNetwork(NeRFRenderer):
             {'params': self.sigma_net.parameters(), 'lr': lr},
             {'params': self.encoder_dir.parameters(), 'lr': lr},
             {'params': self.color_net.parameters(), 'lr': lr}, 
+            {'params': self.semantic_net.parameters(), 'lr': lr}, 
         ]
         if self.bg_radius > 0:
             params.append({'params': self.encoder_bg.parameters(), 'lr': lr})

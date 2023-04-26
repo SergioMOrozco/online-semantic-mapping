@@ -112,11 +112,20 @@ class NeRFGUI:
 
     def prepare_buffer(self, outputs):
         if self.mode == 'image':
+            #print(self.mode)
+            #print(outputs['image'])
+            #print(outputs['image'].shape)
             return outputs['image']
         elif self.mode == "depth":
+            #print(self.mode)
+            #print(outputs['depth'])
+            #print(outputs['depth'].shape)
             return np.expand_dims(outputs['depth'], -1).repeat(3, -1)
         elif self.mode == "semantic":
-            return outputs['semantic']
+            #print(self.mode)
+            #print(outputs['semantic'])
+            #print(outputs['semantic'].shape)
+            return np.expand_dims(outputs['semantic'] / 255., -1).repeat(3, -1)
 
     
     def test_step(self):

@@ -218,6 +218,7 @@ class NeRFDataset:
 
                 image = cv2.imread(f_path, cv2.IMREAD_UNCHANGED) # [H, W, 3] o [H, W, 4]
                 semantic = cv2.imread(semantic_f_path, cv2.IMREAD_UNCHANGED)
+
                 if self.H is None or self.W is None:
                     self.H = image.shape[0] // downscale
                     self.W = image.shape[1] // downscale
@@ -344,7 +345,7 @@ class NeRFDataset:
             if self.training:
                 # NOTE: we are not creating rays for every pixel. We are only using a subset of pixels for some reason
                 semantics = torch.gather(semantics.view(B, -1,1), 1, torch.stack([rays['inds']], -1)) # [B, N, 3/4]
-            #print(semantics.shape)
+
             results['semantics'] = semantics 
         
         # need inds to update error_map

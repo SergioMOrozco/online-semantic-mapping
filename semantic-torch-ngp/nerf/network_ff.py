@@ -21,6 +21,7 @@ class NeRFNetwork(NeRFRenderer):
                  **kwargs
                  ):
         super().__init__(bound, **kwargs)
+        exit()
 
         # sigma network
         self.num_layers = num_layers

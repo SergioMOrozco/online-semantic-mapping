@@ -253,6 +253,8 @@ class _composite_rays_train(Function):
             image: float, [N, 3], the RGB channel (after multiplying alpha!)
         '''
 
+        SEMANTIC_CLASS_NUM = 100
+
         
         sigmas = sigmas.contiguous()
         rgbs = rgbs.contiguous()
@@ -264,9 +266,27 @@ class _composite_rays_train(Function):
         weights_sum = torch.empty(N, dtype=sigmas.dtype, device=sigmas.device)
         depth = torch.empty(N, dtype=sigmas.dtype, device=sigmas.device)
         image = torch.empty(N, 3, dtype=sigmas.dtype, device=sigmas.device)
-        semantic_image= torch.empty(N, 100, dtype=sigmas.dtype, device=sigmas.device)
+        semantic_image= torch.empty(N, SEMANTIC_CLASS_NUM, dtype=sigmas.dtype, device=sigmas.device)
+
+
+        #print("BEGIN")
+
+        #print("IMAGE")
+        #print(image)
+
+        #print("SEMANTIC IMAGE")
+        #print(semantic_image)
 
         _backend.composite_rays_train_forward(sigmas, rgbs, semantics, deltas, rays, M, N, T_thresh, weights_sum, depth, image,semantic_image)
+
+        #print("END")
+
+        #print("IMAGE")
+        #print(image)
+
+        #print("SEMANTIC IMAGE")
+        #print(semantic_image)
+        #exit()
 
         ctx.save_for_backward(sigmas, rgbs,semantics, deltas, rays, weights_sum, depth, image,semantic_image)
         ctx.dims = [M, N, T_thresh]
@@ -374,7 +394,32 @@ class _composite_rays(Function):
             depth: float, [N,], the depth value
             image: float, [N, 3], the RGB channel (after multiplying alpha!)
         '''
+        #print("before")
+        #print("IMAGE")
+        #print(rgbs)
+        #print(rgbs.shape)
+        #print(image)
+        #print(image.shape)
+        #print("SEMANTIC")
+        #print(semantics)
+        #print(semantics.shape)
+        #print(semantic_image)
+        #print(semantic_image.shape)
+
         _backend.composite_rays(n_alive, n_step, T_thresh, rays_alive, rays_t, sigmas, rgbs,semantics, deltas, weights_sum, depth, image,semantic_image)
+
+        #print("after")
+        #print("IMAGE")
+        #print(rgbs)
+        #print(rgbs.shape)
+        #print(image)
+        #print(image.shape)
+        #print("SEMANTIC")
+        #print(semantics)
+        #print(semantics.shape)
+        #print(semantic_image)
+        #print(semantic_image.shape)
+        #exit()
         return tuple()
 
 

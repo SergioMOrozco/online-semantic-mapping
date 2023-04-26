@@ -532,6 +532,7 @@ __global__ void kernel_composite_rays_train_forward(
     sigmas += offset;
     rgbs += offset * 3;
     deltas += offset * 2;
+    semantics += offset * 100;
 
     // accumulate 
     uint32_t step = 0;
@@ -539,10 +540,20 @@ __global__ void kernel_composite_rays_train_forward(
     scalar_t T = 1.0f;
     scalar_t r = 0, g = 0, b = 0, ws = 0, t = 0, d = 0;
 
+    // lets just use 1000 and hope nobody uses more than 1000 classes
+    scalar_t semantic_ids[1000] = {0};
+
     while (step < num_steps) {
 
         const scalar_t alpha = 1.0f - __expf(- sigmas[0] * deltas[0]);
         const scalar_t weight = alpha * T;
+
+
+        //TODO: make semantic class length a parameter
+        for (uint8_t i = 0; i < 100; i++) 
+        {
+          semantic_ids[i] += weight * semantics[i];
+        }
 
         r += weight * rgbs[0];
         g += weight * rgbs[1];
@@ -563,6 +574,7 @@ __global__ void kernel_composite_rays_train_forward(
         // locate
         sigmas++;
         rgbs += 3;
+        semantics += 100;
         deltas += 2;
 
         step++;
@@ -576,6 +588,11 @@ __global__ void kernel_composite_rays_train_forward(
     image[index * 3] = r;
     image[index * 3 + 1] = g;
     image[index * 3 + 2] = b;
+
+    for (uint8_t i = 0; i < 100; i++) 
+    {
+      semantic_image[index * 100 + i] = semantic_ids[i];
+    }
 }
 
 
@@ -637,16 +654,28 @@ __global__ void kernel_composite_rays_train_backward(
     image += index * 3;
     sigmas += offset;
     rgbs += offset * 3;
+    semantics += offset * 100;
     deltas += offset * 2;
     grad_sigmas += offset;
     grad_rgbs += offset * 3;
+    grad_semantics += offset * 100;
 
     // accumulate 
     uint32_t step = 0;
     
     scalar_t T = 1.0f;
     const scalar_t r_final = image[0], g_final = image[1], b_final = image[2], ws_final = weights_sum[0];
+
+    scalar_t semantic_ids_final[1000] ={0};
+
+    for (uint8_t i = 0; i < 100; i++) 
+    {
+      semantic_ids_final[i] = semantic_image[i];
+    }
+
     scalar_t r = 0, g = 0, b = 0, ws = 0;
+
+    scalar_t semantic_ids[1000] ={0};
 
     while (step < num_steps) {
         
@@ -658,6 +687,11 @@ __global__ void kernel_composite_rays_train_backward(
         b += weight * rgbs[2];
         ws += weight;
 
+        for (uint8_t i = 0; i < 100; i++) 
+        {
+          semantic_ids[i] += weight * semantics[i];
+        }
+
         T *= 1.0f - alpha;
         
         // check https://note.kiui.moe/others/nerf_gradient/ for the gradient calculation.
@@ -666,13 +700,33 @@ __global__ void kernel_composite_rays_train_backward(
         grad_rgbs[1] = grad_image[1] * weight;
         grad_rgbs[2] = grad_image[2] * weight;
 
+        for (uint8_t i = 0; i < 100; i++) 
+        {
+          grad_semantics[i] = grad_semantic_image[i] * weight;
+        }
+
+
+        scalar_t sum = 0; 
+        sum += grad_image[0] * (T * rgbs[0] - (r_final - r));
+        sum += grad_image[1] * (T * rgbs[1] - (g_final - g));
+        sum += grad_image[2] * (T * rgbs[2] - (b_final - b));
+
+        for (uint8_t i = 0; i < 100; i++) 
+        {
+          sum += grad_semantic_image[i] * (T * semantics[i] - (semantic_ids_final[i] - semantic_ids[i]));
+        }
+
+        sum += grad_weights_sum[0] * (1 - ws_final);
+
+        grad_sigmas[0] = deltas[0] * sum;
+
         // write grad_sigmas
-        grad_sigmas[0] = deltas[0] * (
-            grad_image[0] * (T * rgbs[0] - (r_final - r)) + 
-            grad_image[1] * (T * rgbs[1] - (g_final - g)) + 
-            grad_image[2] * (T * rgbs[2] - (b_final - b)) +
-            grad_weights_sum[0] * (1 - ws_final)
-        );
+        //grad_sigmas[0] = deltas[0] * (
+        //    grad_image[0] * (T * rgbs[0] - (r_final - r)) + 
+        //    grad_image[1] * (T * rgbs[1] - (g_final - g)) + 
+        //    grad_image[2] * (T * rgbs[2] - (b_final - b)) +
+        //    grad_weights_sum[0] * (1 - ws_final)
+        //);
 
         //printf("[n=%d] num_steps=%d, T=%f, grad_sigmas=%f, r_final=%f, r=%f\n", n, step, T, grad_sigmas[0], r_final, r);
         // minimal remained transmittence
@@ -681,9 +735,11 @@ __global__ void kernel_composite_rays_train_backward(
         // locate
         sigmas++;
         rgbs += 3;
+        semantics += 100;
         deltas += 2;
         grad_sigmas++;
         grad_rgbs += 3;
+        grad_semantics += 100;
 
         step++;
     }
@@ -844,12 +900,14 @@ __global__ void kernel_composite_rays(
     // locate 
     sigmas += n * n_step;
     rgbs += n * n_step * 3;
+    semantics += n * n_step * 100;
     deltas += n * n_step * 2;
     
     rays_t += index;
     weights_sum += index;
     depth += index;
     image += index * 3;
+    semantic_image += index * 100;
 
     scalar_t t = rays_t[0]; // current ray's t
     
@@ -858,6 +916,15 @@ __global__ void kernel_composite_rays(
     scalar_t r = image[0];
     scalar_t g = image[1];
     scalar_t b = image[2];
+
+    scalar_t semantic_ids[1000] = {0};
+
+    for (uint8_t i = 0; i < 100; i++) 
+    {
+      semantic_ids[i] = semantic_image[i];
+    }
+
+
 
     // accumulate 
     uint32_t step = 0;
@@ -884,6 +951,11 @@ __global__ void kernel_composite_rays(
         g += weight * rgbs[1];
         b += weight * rgbs[2];
 
+        for (uint8_t i = 0; i < 100; i++) 
+        {
+          semantic_ids[i] += weight * semantics[i];
+        }
+
         //printf("[n=%d] num_steps=%d, alpha=%f, w=%f, T=%f, sum_dt=%f, d=%f\n", n, step, alpha, weight, T, sum_delta, d);
 
         // ray is terminated if T is too small
@@ -893,6 +965,7 @@ __global__ void kernel_composite_rays(
         // locate
         sigmas++;
         rgbs += 3;
+        semantics += 100;
         deltas += 2;
         step++;
     }
@@ -911,6 +984,11 @@ __global__ void kernel_composite_rays(
     image[0] = r;
     image[1] = g;
     image[2] = b;
+
+    for (uint8_t i = 0; i < 100; i++) 
+    {
+      semantic_image[i] = semantic_ids[i];
+    }
 }
 
 
