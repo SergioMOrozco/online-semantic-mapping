@@ -130,6 +130,7 @@ class NeRFRenderer(nn.Module):
 
     def run(self, rays_o, rays_d, num_steps=128, upsample_steps=128, bg_color=None, perturb=False, **kwargs):
         print("is this ever run?")
+        exit()
         # rays_o, rays_d: [B, N, 3], assumes B == 1
         # bg_color: [3] in range [0, 1]
         # return: image: [B, N, 3], depth: [B, N]
@@ -244,9 +245,9 @@ class NeRFRenderer(nn.Module):
         # calculate semantics
         semantic = torch.sum(weights.unsqueeze(-1) * semantic_logit, dim=-2) # [N, 30], in [0, 1]
 
-        softmax = nn.Softmax(dim=1)
+        #softmax = nn.Softmax(dim=1)
 
-        semantic = softmax(semantic)
+        #semantic = softmax(semantic)
 
         # mix background color
         if self.bg_radius > 0:
@@ -345,7 +346,7 @@ class NeRFRenderer(nn.Module):
                 weights_sum, depth, image,semantic_image = raymarching.composite_rays_train(sigmas, rgbs,semantics, deltas, rays, T_thresh)
                 image = image + (1 - weights_sum).unsqueeze(-1) * bg_color
                 #semantic_image = semantic_image + (1 - weights_sum).unsqueeze(-1) * bg_color
-                semantic_image = semantic_image + (1 - weights_sum).unsqueeze(-1)
+                #semantic_image = semantic_image + (1 - weights_sum).unsqueeze(-1)
                 depth = torch.clamp(depth - nears, min=0) / (fars - nears)
                 image = image.view(*prefix, 3)
                 semantic_image = semantic_image.view(*prefix, SEMANTIC_CLASS_NUM)
@@ -403,7 +404,7 @@ class NeRFRenderer(nn.Module):
 
             image = image + (1 - weights_sum).unsqueeze(-1) * bg_color
             #semantic_image = semantic_image + (1 - weights_sum).unsqueeze(-1) * bg_color
-            semantic_image = semantic_image + (1 - weights_sum).unsqueeze(-1)
+            #semantic_image = semantic_image + (1 - weights_sum).unsqueeze(-1)
             depth = torch.clamp(depth - nears, min=0) / (fars - nears)
             image = image.view(*prefix, 3)
             semantic_image= semantic_image.view(*prefix, SEMANTIC_CLASS_NUM)
@@ -413,9 +414,9 @@ class NeRFRenderer(nn.Module):
             depth = depth.view(*prefix)
 
         #TODO: Add softmax to semantic image
-        softmax = nn.Softmax(dim=2)
+        #softmax = nn.Softmax(dim=2)
 
-        semantic_image = softmax(semantic_image)
+        semantic_image = torch.sigmoid(semantic_image)
 
         results['depth'] = depth
         results['image'] = image

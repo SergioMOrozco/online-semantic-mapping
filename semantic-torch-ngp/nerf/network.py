@@ -17,8 +17,8 @@ class NeRFNetwork(NeRFRenderer):
                  geo_feat_dim=15,
                  num_layers_color=3,
                  hidden_dim_color=64,
-                 num_layers_semantic=3,
-                 hidden_dim_semantic=64,
+                 num_layers_semantic=4,
+                 hidden_dim_semantic=128,
                  num_layers_bg=2,
                  hidden_dim_bg=64,
                  bound=1,
@@ -83,8 +83,8 @@ class NeRFNetwork(NeRFRenderer):
             semantic_net =  []
             for l in range(num_layers_semantic):
                 if l == 0:
-                    in_dim = self.in_dim_dir + self.geo_feat_dim
-                    #in_dim = self.geo_feat_dim
+                    #in_dim = self.in_dim_dir + self.geo_feat_dim
+                    in_dim = self.geo_feat_dim
                 else:
                     in_dim = hidden_dim_semantic
                 
@@ -162,8 +162,8 @@ class NeRFNetwork(NeRFRenderer):
 
         # NOTE: This is where density is fed into color
         # TODO: I dont think semantic takes in viewing direction
-        h = torch.cat([d, geo_feat], dim=-1)
-        #h = semantic_h
+        #h = torch.cat([d, geo_feat], dim=-1)
+        h = semantic_h
         for l in range(self.num_layers_semantic):
             h = self.semantic_net[l](h)
             if l != self.num_layers_semantic - 1:
@@ -172,7 +172,7 @@ class NeRFNetwork(NeRFRenderer):
         semantic = h
         
         # sigmoid activation for rgb
-        semantic = torch.relu(h)
+        #semantic = torch.sigmoid(h)
 
         return sigma, color, semantic
 
@@ -260,15 +260,16 @@ class NeRFNetwork(NeRFRenderer):
             geo_feat = geo_feat[mask]
 
         #NOTE: Remember, we encode direction seperately
-        d = self.encoder_dir(d)
-        h = torch.cat([d, geo_feat], dim=-1)
+        #d = self.encoder_dir(d)
+        #h = torch.cat([d, geo_feat], dim=-1)
+        h = geo_feat 
         for l in range(self.num_layers_semantic):
             h = self.semantic_net[l](h)
             if l != self.num_layers_semantic - 1:
                 h = F.relu(h, inplace=True)
         
         # sigmoid activation for rgb
-        h = torch.relu(h)
+        #h = torch.sigmoid(h)
 
 
         if mask is not None:

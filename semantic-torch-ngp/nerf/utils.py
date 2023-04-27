@@ -385,7 +385,7 @@ class Trainer(object):
             self.criterion_lpips = lpips.LPIPS(net='alex').to(self.device)
 
         if optimizer is None:
-            self.optimizer = optim.Adam(self.model.parameters(), lr=0.001, weight_decay=5e-4) # naive adam
+            self.optimizer = optim.Adam(self.model.parameters(), lr=0.0001, weight_decay=5e-4) # naive adam
         else:
             self.optimizer = optimizer(self.model)
 
@@ -563,6 +563,7 @@ class Trainer(object):
         # exit()
 
         loss_semantic = self.semantic_criterion(pred_semantic, gt_semantics).mean(-1) # [B, N, 1] --> [B, N]
+        print(loss_semantic)
 
         # print("HELLO")
         # print(loss_semantic)
@@ -607,7 +608,7 @@ class Trainer(object):
             # put back
             self.error_map[index] = error_map
 
-        loss = loss + ( 0.04 * loss_semantic)
+        loss = loss + ( 0.0004 * loss_semantic)
 
         loss = loss.mean()
 
@@ -813,6 +814,7 @@ class Trainer(object):
          
             self.scaler.scale(loss).backward()
             self.scaler.step(self.optimizer)
+            
             self.scaler.update()
             
             if self.scheduler_update_every_step:
