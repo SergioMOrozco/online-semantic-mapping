@@ -50,26 +50,6 @@ class NeRFNetwork(NeRFRenderer):
 
         self.sigma_net = nn.ModuleList(sigma_net)
 
-        # color network
-        self.num_layers_color = num_layers_color        
-        self.hidden_dim_color = hidden_dim_color
-        self.encoder_dir, self.in_dim_dir = get_encoder(encoding_dir)
-        
-        color_net =  []
-        for l in range(num_layers_color):
-            if l == 0:
-                in_dim = self.in_dim_dir + self.geo_feat_dim
-            else:
-                in_dim = hidden_dim_color
-            
-            if l == num_layers_color - 1:
-                out_dim = 3 # 3 rgb
-            else:
-                out_dim = hidden_dim_color
-            
-            color_net.append(nn.Linear(in_dim, out_dim, bias=False))
-
-        self.color_net = nn.ModuleList(color_net)
 
 
         if use_semantics:
@@ -98,6 +78,29 @@ class NeRFNetwork(NeRFRenderer):
             self.semantic_net = nn.ModuleList(semantic_net)
         else:
             self.semantic_net = None
+        
+
+        # color network
+        self.num_layers_color = num_layers_color        
+        self.hidden_dim_color = hidden_dim_color
+        self.encoder_dir, self.in_dim_dir = get_encoder(encoding_dir)
+        color_net =  []
+        for l in range(num_layers_color):
+            if l == 0:
+                in_dim = self.in_dim_dir + self.geo_feat_dim
+            else:
+                in_dim = hidden_dim_color
+            
+            if l == num_layers_color - 1:
+                out_dim = 3 # 3 rgb
+            else:
+                out_dim = hidden_dim_color
+            
+            color_net.append(nn.Linear(in_dim, out_dim, bias=False))
+
+        self.color_net = nn.ModuleList(color_net)
+
+
 
         # background network
         if self.bg_radius > 0:
@@ -291,8 +294,8 @@ class NeRFNetwork(NeRFRenderer):
             {'params': self.encoder.parameters(), 'lr': lr},
             {'params': self.sigma_net.parameters(), 'lr': lr},
             {'params': self.encoder_dir.parameters(), 'lr': lr},
-            {'params': self.color_net.parameters(), 'lr': lr}, 
             {'params': self.semantic_net.parameters(), 'lr': lr}, 
+            {'params': self.color_net.parameters(), 'lr': lr}, 
         ]
         if self.bg_radius > 0:
             params.append({'params': self.encoder_bg.parameters(), 'lr': lr})

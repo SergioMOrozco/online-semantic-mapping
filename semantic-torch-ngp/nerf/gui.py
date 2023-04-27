@@ -122,10 +122,10 @@ class NeRFGUI:
             #print(outputs['depth'].shape)
             return np.expand_dims(outputs['depth'], -1).repeat(3, -1)
         elif self.mode == "semantic":
-            print(self.mode)
-            print(outputs['semantic'])
-            print(outputs['semantic'].shape)
-            return outputs['image']
+            #print(self.mode)
+            #print(outputs['semantic'])
+            #print(outputs['semantic'].shape)
+            return outputs['semantic']
             #return np.expand_dims(outputs['semantic'] / 255., -1).repeat(3, -1)
 
     

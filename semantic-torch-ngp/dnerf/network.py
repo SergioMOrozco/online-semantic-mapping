@@ -27,6 +27,7 @@ class NeRFNetwork(NeRFRenderer):
                  **kwargs,
                  ):
         super().__init__(bound, **kwargs)
+        exit()
 
         # deformation network
         self.num_layers_deform = num_layers_deform

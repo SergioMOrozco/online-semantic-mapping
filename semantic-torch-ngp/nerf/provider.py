@@ -224,17 +224,23 @@ class NeRFDataset:
                     self.H = image.shape[0] // downscale
                     self.W = image.shape[1] // downscale
 
+                    self.H = semantic_image.shape[0] // downscale
+                    self.W = semantic_image.shape[1] // downscale
+
                 # add support for the alpha channel as a mask.
                 if image.shape[-1] == 3: 
                     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                    semantic = cv2.cvtColor(semantic, cv2.COLOR_BGR2RGB)
                 else:
                     image = cv2.cvtColor(image, cv2.COLOR_BGRA2RGBA)
+                    semantic = cv2.cvtColor(semantic, cv2.COLOR_BGRA2RGBA)
 
                 if image.shape[0] != self.H or image.shape[1] != self.W:
                     image = cv2.resize(image, (self.W, self.H), interpolation=cv2.INTER_AREA)
 
                 if semantic.shape[0] != self.H or semantic.shape[1] != self.W:
-                    semantic = cv2.resize(semantic, (self.W, self.H), interpolation=cv2.INTER_NEAREST)
+                    #semantic = cv2.resize(semantic, (self.W, self.H), interpolation=cv2.INTER_NEAREST)
+                    semantic = cv2.resize(semantic, (self.W, self.H), interpolation=cv2.INTER_AREA)
                     
                 image = image.astype(np.float32) / 255 # [H, W, 3/4]
                 semantic = semantic.astype(np.float32) / 255 # [H, W, 3/4]
@@ -267,6 +273,7 @@ class NeRFDataset:
         # visualize_poses(rand_poses(100, self.device, radius=self.radius).cpu().numpy())
 
         if self.preload:
+            print("We dont preload right?")
             self.poses = self.poses.to(self.device)
             if self.images is not None:
                 # TODO: linear use pow, but pow for half is only available for torch >= 1.10 ?
@@ -275,6 +282,7 @@ class NeRFDataset:
                 else:
                     dtype = torch.float
                 self.images = self.images.to(dtype).to(self.device)
+                self.semantics= self.semantics.to(dtype).to(self.device)
             if self.error_map is not None:
                 self.error_map = self.error_map.to(self.device)
 
@@ -346,7 +354,8 @@ class NeRFDataset:
             semantics = self.semantics[index].to(self.device) # [B, H, W]
             if self.training:
                 # NOTE: we are not creating rays for every pixel. We are only using a subset of pixels for some reason
-                semantics = torch.gather(semantics.view(B, -1,1), 1, torch.stack([rays['inds']], -1)) # [B, N, 3/4]
+                SEMANTIC_C = semantics.shape[-1]
+                semantics = torch.gather(semantics.view(B, -1, SEMANTIC_C), 1, torch.stack(SEMANTIC_C * [rays['inds']], -1)) # [B, N, 3/4]
 
             results['semantics'] = semantics 
         

@@ -226,6 +226,8 @@ class PSNRMeter:
         return outputs
 
     def update(self, preds, truths):
+        print("does this happen?")
+        exit()
         preds, truths = self.prepare_inputs(preds, truths) # [B, N, 3] or [B, H, W, 3], range[0, 1]
           
         # simplified since max_pixel_value is 1 here.
@@ -264,6 +266,8 @@ class SSIMMeter:
         return outputs
 
     def update(self, preds, truths):
+        print("does this happen?")
+        exit()
         preds, truths = self.prepare_inputs(preds, truths) # [B, H, W, 3] --> [B, 3, H, W], range in [0, 1]
 
         ssim = structural_similarity_index_measure(preds, truths)
@@ -303,6 +307,8 @@ class LPIPSMeter:
         return outputs
     
     def update(self, preds, truths):
+        print("does this happen?")
+        exit()
         preds, truths = self.prepare_inputs(preds, truths) # [B, H, W, 3] --> [B, 3, H, W], range in [0, 1]
         v = self.fn(truths, preds, normalize=True).item() # normalize=True: [0, 1] to [-1, 1]
         self.V += v
@@ -385,7 +391,7 @@ class Trainer(object):
             self.criterion_lpips = lpips.LPIPS(net='alex').to(self.device)
 
         if optimizer is None:
-            self.optimizer = optim.Adam(self.model.parameters(), lr=0.0001, weight_decay=5e-4) # naive adam
+            self.optimizer = optim.Adam(self.model.parameters(), lr=0.001, weight_decay=5e-4) # naive adam
         else:
             self.optimizer = optimizer(self.model)
 
@@ -508,6 +514,7 @@ class Trainer(object):
         if self.opt.color_space == 'linear':
             print("What is this?")
             images[..., :3] = srgb_to_linear(images[..., :3])
+            semantics[..., :3] = srgb_to_linear(semantics[..., :3])
 
         if C_image == 3 or self.model.bg_radius > 0:
             bg_color = 1
@@ -518,12 +525,13 @@ class Trainer(object):
             bg_color = torch.rand_like(images[..., :3]) # [N, 3], pixel-wise random.
 
         if C_image == 4:
+            print("this doesnt happen right?")
             #NOTE: What the hell is this
             gt_rgb = images[..., :3] * images[..., 3:] + bg_color * (1 - images[..., 3:])
+            gt_semantics= semantics[..., :3] * semantics[..., 3:] + bg_color * (1 - semantics[..., 3:])
         else:
             gt_rgb = images
-
-        gt_semantics = semantics 
+            gt_semantics = semantics 
 
         outputs = self.model.render(rays_o, rays_d, staged=False, bg_color=bg_color, perturb=True, force_all_rays=False if self.opt.patch_size == 1 else True, **vars(self.opt))
 
@@ -534,7 +542,8 @@ class Trainer(object):
 
         #NOTE: Where loss is calculated
         # MSE loss
-        loss = self.criterion(pred_rgb, gt_rgb).mean(-1) # [B, N, 3] --> [B, N]
+        #loss = self.criterion(pred_rgb, gt_rgb).mean(-1) # [B, N, 3] --> [B, N]
+        loss = self.criterion(pred_semantic, gt_semantics).mean(-1) # [B, N, 3] --> [B, N]
 
 
         #pred_semantic = np.array([np.argmax(a.detach().cpu().numpy(), axis = 0) for a in pred_semantic[0]])
@@ -549,20 +558,11 @@ class Trainer(object):
         #gt_semantics = gt_semantics.view(gt_semantics.shape[0],gt_semantics.shape[1])
         #gt_semantics = gt_semantics.long()
 
-        #print("SEMANTICS")
-        #print("PRED")
-        #print(pred_semantic.shape)
-        #print(pred_semantic.dtype)
-        #print(pred_semantic)
-        #print("GT")
-        #print(gt_semantics.shape)
-        #print(gt_semantics.dtype)
-        #print(gt_semantics)
         #
         # print(gt_semantics)
         # exit()
 
-        loss_semantic = self.semantic_criterion(pred_semantic, gt_semantics).mean(-1) # [B, N, 1] --> [B, N]
+        #loss_semantic = self.semantic_criterion(pred_semantic, gt_semantics).mean(-1) # [B, N, 1] --> [B, N]
         #print(loss_semantic)
 
         # print("HELLO")
@@ -571,6 +571,7 @@ class Trainer(object):
 
         # patch-based rendering
         if self.opt.patch_size > 1:
+            print("This doesnt happen right?")
             gt_rgb = gt_rgb.view(-1, self.opt.patch_size, self.opt.patch_size, 3).permute(0, 3, 1, 2).contiguous()
             pred_rgb = pred_rgb.view(-1, self.opt.patch_size, self.opt.patch_size, 3).permute(0, 3, 1, 2).contiguous()
 
@@ -609,7 +610,7 @@ class Trainer(object):
             self.error_map[index] = error_map
 
         #loss = loss + ( 0.0004 * loss_semantic)
-        loss = loss + loss_semantic 
+        #loss = loss + loss_semantic 
 
         loss = loss.mean()
 
@@ -623,6 +624,7 @@ class Trainer(object):
 
     def eval_step(self, data):
         print("Am I no doing eval for the semantic image?")
+        exit()
 
         rays_o = data['rays_o'] # [B, N, 3]
         rays_d = data['rays_d'] # [B, N, 3]
@@ -725,6 +727,8 @@ class Trainer(object):
         self.use_tensorboardX = use_tensorboardX
 
     def test(self, loader, save_path=None, name=None, write_video=True):
+        print("Are we testing?")
+        exit()
 
         if save_path is None:
             save_path = os.path.join(self.workspace, 'results')
@@ -844,7 +848,6 @@ class Trainer(object):
     
     # [GUI] test on a single image
     def test_gui(self, pose, intrinsics, W, H, bg_color=None, spp=1, downscale=1):
-        print("test gui")
 
         # render resolution (may need downscale to for better frame rate)
         rH = int(H * downscale)
@@ -886,6 +889,7 @@ class Trainer(object):
 
         if self.opt.color_space == 'linear':
             preds = linear_to_srgb(preds)
+            preds_semantic = linear_to_srgb(preds_semantic)
 
         #pred_semantic = preds_semantic[0].detach().cpu().numpy()
 
@@ -914,6 +918,8 @@ class Trainer(object):
         return outputs
 
     def train_one_epoch(self, loader):
+        print("does this happend?")
+        exit()
         self.log(f"==> Start Training Epoch {self.epoch}, lr={self.optimizer.param_groups[0]['lr']:.6f} ...")
 
         total_loss = 0
@@ -1000,6 +1006,8 @@ class Trainer(object):
 
     def evaluate_one_epoch(self, loader, name=None):
         self.log(f"++> Evaluate at epoch {self.epoch} ...")
+        print("Does this happen?")
+        exit()
 
         if name is None:
             name = f'{self.name}_ep{self.epoch:04d}'

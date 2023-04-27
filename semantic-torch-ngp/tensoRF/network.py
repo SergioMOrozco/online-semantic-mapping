@@ -26,6 +26,7 @@ class NeRFNetwork(NeRFRenderer):
                  **kwargs
                  ):
         super().__init__(bound, **kwargs)
+        exit()
 
         self.resolution = resolution
 

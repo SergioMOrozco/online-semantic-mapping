@@ -14,6 +14,7 @@ class SDFNetwork(nn.Module):
                  clip_sdf=None,
                  ):
         super().__init__()
+        exit()
 
 
         self.num_layers = num_layers

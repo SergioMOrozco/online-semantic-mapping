@@ -325,6 +325,8 @@ class NeRFRenderer(nn.Module):
 
             # special case for CCNeRF's residual learning
             if len(sigmas.shape) == 2:
+                print("does this ever happen?")
+                exit()
                 K = sigmas.shape[0]
                 depths = []
                 images = []
@@ -332,6 +334,7 @@ class NeRFRenderer(nn.Module):
                     print("This is happening!!")
                     weights_sum, depth, image, semantic_image = raymarching.composite_rays_train(sigmas[k], rgbs[k],semantics[k], deltas, rays, T_thresh)
                     image = image + (1 - weights_sum).unsqueeze(-1) * bg_color
+                    semantic_image = semantic_image + (1 - weights_sum).unsqueeze(-1) * bg_color
                     depth = torch.clamp(depth - nears, min=0) / (fars - nears)
                     print("this shouldn't happen")
                     exit()
@@ -345,7 +348,7 @@ class NeRFRenderer(nn.Module):
 
                 weights_sum, depth, image,semantic_image = raymarching.composite_rays_train(sigmas, rgbs,semantics, deltas, rays, T_thresh)
                 image = image + (1 - weights_sum).unsqueeze(-1) * bg_color
-                #semantic_image = semantic_image + (1 - weights_sum).unsqueeze(-1) * bg_color
+                semantic_image = semantic_image + (1 - weights_sum).unsqueeze(-1) * bg_color
                 #semantic_image = semantic_image + (1 - weights_sum).unsqueeze(-1)
                 depth = torch.clamp(depth - nears, min=0) / (fars - nears)
                 image = image.view(*prefix, 3)
@@ -403,7 +406,7 @@ class NeRFRenderer(nn.Module):
                 step += n_step
 
             image = image + (1 - weights_sum).unsqueeze(-1) * bg_color
-            #semantic_image = semantic_image + (1 - weights_sum).unsqueeze(-1) * bg_color
+            semantic_image = semantic_image + (1 - weights_sum).unsqueeze(-1) * bg_color
             #semantic_image = semantic_image + (1 - weights_sum).unsqueeze(-1)
             depth = torch.clamp(depth - nears, min=0) / (fars - nears)
             image = image.view(*prefix, 3)
@@ -421,6 +424,7 @@ class NeRFRenderer(nn.Module):
         results['depth'] = depth
         results['image'] = image
         results['semantic'] = semantic_image
+        #results['semantic'] = image
 
         return results
 
