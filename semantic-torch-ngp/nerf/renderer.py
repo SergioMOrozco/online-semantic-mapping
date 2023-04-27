@@ -11,7 +11,7 @@ import raymarching
 from .utils import custom_meshgrid
 
 
-SEMANTIC_CLASS_NUM = 100
+SEMANTIC_CLASS_NUM = 3
 
 def sample_pdf(bins, weights, n_samples, det=False):
     # This implementation is from NeRF
@@ -416,7 +416,7 @@ class NeRFRenderer(nn.Module):
         #TODO: Add softmax to semantic image
         #softmax = nn.Softmax(dim=2)
 
-        semantic_image = torch.sigmoid(semantic_image)
+        #$semantic_image = torch.sigmoid(semantic_image)
 
         results['depth'] = depth
         results['image'] = image

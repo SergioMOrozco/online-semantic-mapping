@@ -125,7 +125,8 @@ class NeRFGUI:
             print(self.mode)
             print(outputs['semantic'])
             print(outputs['semantic'].shape)
-            return np.expand_dims(outputs['semantic'] / 255., -1).repeat(3, -1)
+            return outputs['image']
+            #return np.expand_dims(outputs['semantic'] / 255., -1).repeat(3, -1)
 
     
     def test_step(self):

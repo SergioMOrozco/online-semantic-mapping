@@ -103,7 +103,8 @@ if __name__ == '__main__':
     print(model)
 
     criterion = torch.nn.MSELoss(reduction='none')
-    semantic_criterion = torch.nn.CrossEntropyLoss()
+    #semantic_criterion = torch.nn.CrossEntropyLoss()
+    semantic_criterion = torch.nn.MSELoss(reduction='none')
     #criterion = partial(huber_loss, reduction='none')
     #criterion = torch.nn.HuberLoss(reduction='none', beta=0.1) # only available after torch 1.10 ?
 

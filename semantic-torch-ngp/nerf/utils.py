@@ -34,7 +34,7 @@ import lpips
 from torchmetrics.functional import structural_similarity_index_measure
 
 
-SEMANTIC_CLASS_NUM = 100
+SEMANTIC_CLASS_NUM = 3
 
 def custom_meshgrid(*args):
     # ref: https://pytorch.org/docs/stable/generated/torch.meshgrid.html?highlight=meshgrid#torch.meshgrid
@@ -542,12 +542,12 @@ class Trainer(object):
         #pred_semantic = pred_semantic.view(B_semantic,N_semantic,C_semantic)
         #pred_semantic = pred_semantic.to(self.device)
         #print(pred_semantic.shape)
-        pred_semantic = pred_semantic.view(pred_semantic.shape[0],pred_semantic.shape[2],pred_semantic.shape[1])
+        #pred_semantic = pred_semantic.view(pred_semantic.shape[0],pred_semantic.shape[2],pred_semantic.shape[1])
         #pred_semantic = pred_semantic.long()
 
 
-        gt_semantics = gt_semantics.view(gt_semantics.shape[0],gt_semantics.shape[1])
-        gt_semantics = gt_semantics.long()
+        #gt_semantics = gt_semantics.view(gt_semantics.shape[0],gt_semantics.shape[1])
+        #gt_semantics = gt_semantics.long()
 
         #print("SEMANTICS")
         #print("PRED")
@@ -563,7 +563,7 @@ class Trainer(object):
         # exit()
 
         loss_semantic = self.semantic_criterion(pred_semantic, gt_semantics).mean(-1) # [B, N, 1] --> [B, N]
-        print(loss_semantic)
+        #print(loss_semantic)
 
         # print("HELLO")
         # print(loss_semantic)
@@ -608,7 +608,8 @@ class Trainer(object):
             # put back
             self.error_map[index] = error_map
 
-        loss = loss + ( 0.0004 * loss_semantic)
+        #loss = loss + ( 0.0004 * loss_semantic)
+        loss = loss + loss_semantic 
 
         loss = loss.mean()
 
@@ -886,18 +887,14 @@ class Trainer(object):
         if self.opt.color_space == 'linear':
             preds = linear_to_srgb(preds)
 
-        pred_semantic = preds_semantic[0].detach().cpu().numpy()
+        #pred_semantic = preds_semantic[0].detach().cpu().numpy()
 
 
-        pred_semantic = pred_semantic.argmax(axis=2)
+        #pred_semantic = pred_semantic.argmax(axis=2)
 
-        #arg_maxes = pred_semantic.argmax(axis=2)
-        #m,n = pred_semantic.shape[:2]
-        #I,J = np.ogrid[:m,:n]
-        #pred_semantic = pred_semantic[I,J,arg_maxes]
 
         pred = preds[0].detach().cpu().numpy()
-        #pred_semantic = preds_semantic[0].detach().cpu().numpy()
+        pred_semantic = preds_semantic[0].detach().cpu().numpy()
         pred_depth = preds_depth[0].detach().cpu().numpy()
 
 

@@ -532,7 +532,7 @@ __global__ void kernel_composite_rays_train_forward(
     sigmas += offset;
     rgbs += offset * 3;
     deltas += offset * 2;
-    semantics += offset * 100;
+    semantics += offset * 3;
 
     // accumulate 
     uint32_t step = 0;
@@ -550,7 +550,7 @@ __global__ void kernel_composite_rays_train_forward(
 
 
         //TODO: make semantic class length a parameter
-        for (uint8_t i = 0; i < 100; i++) 
+        for (uint8_t i = 0; i < 3; i++) 
         {
           semantic_ids[i] += weight * semantics[i];
         }
@@ -574,7 +574,7 @@ __global__ void kernel_composite_rays_train_forward(
         // locate
         sigmas++;
         rgbs += 3;
-        semantics += 100;
+        semantics += 3;
         deltas += 2;
 
         step++;
@@ -589,9 +589,9 @@ __global__ void kernel_composite_rays_train_forward(
     image[index * 3 + 1] = g;
     image[index * 3 + 2] = b;
 
-    for (uint8_t i = 0; i < 100; i++) 
+    for (uint8_t i = 0; i < 3; i++) 
     {
-      semantic_image[index * 100 + i] = semantic_ids[i];
+      semantic_image[index * 3 + i] = semantic_ids[i];
     }
 }
 
@@ -654,11 +654,11 @@ __global__ void kernel_composite_rays_train_backward(
     image += index * 3;
     sigmas += offset;
     rgbs += offset * 3;
-    semantics += offset * 100;
+    semantics += offset * 3;
     deltas += offset * 2;
     grad_sigmas += offset;
     grad_rgbs += offset * 3;
-    grad_semantics += offset * 100;
+    grad_semantics += offset * 3;
 
     // accumulate 
     uint32_t step = 0;
@@ -668,7 +668,7 @@ __global__ void kernel_composite_rays_train_backward(
 
     scalar_t semantic_ids_final[1000] ={0};
 
-    for (uint8_t i = 0; i < 100; i++) 
+    for (uint8_t i = 0; i < 3; i++) 
     {
       semantic_ids_final[i] = semantic_image[i];
     }
@@ -687,7 +687,7 @@ __global__ void kernel_composite_rays_train_backward(
         b += weight * rgbs[2];
         ws += weight;
 
-        for (uint8_t i = 0; i < 100; i++) 
+        for (uint8_t i = 0; i < 3; i++) 
         {
           semantic_ids[i] += weight * semantics[i];
         }
@@ -700,7 +700,7 @@ __global__ void kernel_composite_rays_train_backward(
         grad_rgbs[1] = grad_image[1] * weight;
         grad_rgbs[2] = grad_image[2] * weight;
 
-        for (uint8_t i = 0; i < 100; i++) 
+        for (uint8_t i = 0; i < 3; i++) 
         {
           grad_semantics[i] = grad_semantic_image[i] * weight;
         }
@@ -711,7 +711,7 @@ __global__ void kernel_composite_rays_train_backward(
         sum += grad_image[1] * (T * rgbs[1] - (g_final - g));
         sum += grad_image[2] * (T * rgbs[2] - (b_final - b));
 
-        for (uint8_t i = 0; i < 100; i++) 
+        for (uint8_t i = 0; i < 3; i++) 
         {
           sum += grad_semantic_image[i] * (T * semantics[i] - (semantic_ids_final[i] - semantic_ids[i]));
         }
@@ -735,11 +735,11 @@ __global__ void kernel_composite_rays_train_backward(
         // locate
         sigmas++;
         rgbs += 3;
-        semantics += 100;
+        semantics += 3;
         deltas += 2;
         grad_sigmas++;
         grad_rgbs += 3;
-        grad_semantics += 100;
+        grad_semantics += 3;
 
         step++;
     }
@@ -900,14 +900,14 @@ __global__ void kernel_composite_rays(
     // locate 
     sigmas += n * n_step;
     rgbs += n * n_step * 3;
-    semantics += n * n_step * 100;
+    semantics += n * n_step * 3;
     deltas += n * n_step * 2;
     
     rays_t += index;
     weights_sum += index;
     depth += index;
     image += index * 3;
-    semantic_image += index * 100;
+    semantic_image += index * 3;
 
     scalar_t t = rays_t[0]; // current ray's t
     
@@ -919,7 +919,7 @@ __global__ void kernel_composite_rays(
 
     scalar_t semantic_ids[1000] = {0};
 
-    for (uint8_t i = 0; i < 100; i++) 
+    for (uint8_t i = 0; i < 3; i++) 
     {
       semantic_ids[i] = semantic_image[i];
     }
@@ -951,7 +951,7 @@ __global__ void kernel_composite_rays(
         g += weight * rgbs[1];
         b += weight * rgbs[2];
 
-        for (uint8_t i = 0; i < 100; i++) 
+        for (uint8_t i = 0; i < 3; i++) 
         {
           semantic_ids[i] += weight * semantics[i];
         }
@@ -965,7 +965,7 @@ __global__ void kernel_composite_rays(
         // locate
         sigmas++;
         rgbs += 3;
-        semantics += 100;
+        semantics += 3;
         deltas += 2;
         step++;
     }
@@ -985,7 +985,7 @@ __global__ void kernel_composite_rays(
     image[1] = g;
     image[2] = b;
 
-    for (uint8_t i = 0; i < 100; i++) 
+    for (uint8_t i = 0; i < 3; i++) 
     {
       semantic_image[i] = semantic_ids[i];
     }

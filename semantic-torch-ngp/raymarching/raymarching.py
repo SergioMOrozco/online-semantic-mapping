@@ -253,7 +253,7 @@ class _composite_rays_train(Function):
             image: float, [N, 3], the RGB channel (after multiplying alpha!)
         '''
 
-        SEMANTIC_CLASS_NUM = 100
+        SEMANTIC_CLASS_NUM = 3
 
         
         sigmas = sigmas.contiguous()
