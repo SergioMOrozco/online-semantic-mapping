@@ -486,35 +486,11 @@ class Trainer(object):
         rays_o = data['rays_o'] # [B, N, 3]
         rays_d = data['rays_d'] # [B, N, 3]
 
-        # if there is no gt image, we train with CLIP loss.
-        if 'images' not in data:
-            print("This should not happen")
-            exit()
-
-            B, N = rays_o.shape[:2]
-            H, W = data['H'], data['W']
-
-            # currently fix white bg, MUST force all rays!
-            outputs = self.model.render(rays_o, rays_d, staged=False, bg_color=None, perturb=True, force_all_rays=True, **vars(self.opt))
-            pred_rgb = outputs['image'].reshape(B, H, W, 3).permute(0, 3, 1, 2).contiguous()
-
-            # [debug] uncomment to plot the images used in train_step
-            #torch_vis_2d(pred_rgb[0])
-
-            loss = self.clip_loss(pred_rgb)
-            
-            return pred_rgb, None, loss
-
         images = data['images'] # [B, N, 3/4]
         semantics = data['semantics'] # [B, N, 1]
 
         B_image, N_image, C_image = images.shape
         B_semantic, N_semantic, C_semantic= semantics.shape
-
-        if self.opt.color_space == 'linear':
-            print("What is this?")
-            images[..., :3] = srgb_to_linear(images[..., :3])
-            semantics[..., :3] = srgb_to_linear(semantics[..., :3])
 
         if C_image == 3 or self.model.bg_radius > 0:
             bg_color = 1
@@ -524,16 +500,10 @@ class Trainer(object):
             #bg_color = torch.rand(3, device=self.device) # [3], frame-wise random.
             bg_color = torch.rand_like(images[..., :3]) # [N, 3], pixel-wise random.
 
-        if C_image == 4:
-            print("this doesnt happen right?")
-            #NOTE: What the hell is this
-            gt_rgb = images[..., :3] * images[..., 3:] + bg_color * (1 - images[..., 3:])
-            gt_semantics= semantics[..., :3] * semantics[..., 3:] + bg_color * (1 - semantics[..., 3:])
-        else:
-            gt_rgb = images
-            gt_semantics = semantics 
+        gt_rgb = images
+        gt_semantics = semantics 
 
-        outputs = self.model.render(rays_o, rays_d, staged=False, bg_color=bg_color, perturb=True, force_all_rays=False if self.opt.patch_size == 1 else True, **vars(self.opt))
+        outputs = self.model.render(rays_o, rays_d, SEMANTIC_CLASS_NUM, staged=False, bg_color=bg_color, perturb=True, force_all_rays=False if self.opt.patch_size == 1 else True, **vars(self.opt))
 
         # outputs = self.model.render(rays_o, rays_d, staged=False, bg_color=bg_color, perturb=True, force_all_rays=True, **vars(self.opt))
     
@@ -542,8 +512,8 @@ class Trainer(object):
 
         #NOTE: Where loss is calculated
         # MSE loss
-        #loss = self.criterion(pred_rgb, gt_rgb).mean(-1) # [B, N, 3] --> [B, N]
-        loss = self.criterion(pred_semantic, gt_semantics).mean(-1) # [B, N, 3] --> [B, N]
+        loss = self.criterion(pred_rgb, gt_rgb).mean(-1) # [B, N, 3] --> [B, N]
+        loss_semantic = self.semantic_criterion(pred_semantic, gt_semantics).mean(-1) # [B, N, 3] --> [B, N]
 
 
         #pred_semantic = np.array([np.argmax(a.detach().cpu().numpy(), axis = 0) for a in pred_semantic[0]])
@@ -609,7 +579,7 @@ class Trainer(object):
             # put back
             self.error_map[index] = error_map
 
-        #loss = loss + ( 0.0004 * loss_semantic)
+        loss = loss + ( 0.04 * loss_semantic)
         #loss = loss + loss_semantic 
 
         loss = loss.mean()
@@ -641,7 +611,7 @@ class Trainer(object):
         else:
             gt_rgb = images
         
-        outputs = self.model.render(rays_o, rays_d, staged=True, bg_color=bg_color, perturb=False, **vars(self.opt))
+        outputs = self.model.render(rays_o, rays_d, SEMANTIC_CLASS_NUM, staged=True, bg_color=bg_color, perturb=False, **vars(self.opt))
 
         pred_rgb = outputs['image'].reshape(B, H, W, 3)
         pred_depth = outputs['depth'].reshape(B, H, W)
@@ -660,7 +630,7 @@ class Trainer(object):
         if bg_color is not None:
             bg_color = bg_color.to(self.device)
 
-        outputs = self.model.render(rays_o, rays_d, staged=True, bg_color=bg_color, perturb=perturb, **vars(self.opt))
+        outputs = self.model.render(rays_o, rays_d, SEMANTIC_CLASS_NUM, staged=True, bg_color=bg_color, perturb=perturb, **vars(self.opt))
 
         pred_rgb = outputs['image'].reshape(-1, H, W, 3)
         pred_depth = outputs['depth'].reshape(-1, H, W)

@@ -274,15 +274,12 @@ class NeRFRenderer(nn.Module):
             'weights_sum': weights_sum,
             'semantic': semantic,
         }
-
-
-    def run_cuda(self, rays_o, rays_d, dt_gamma=0, bg_color=None, perturb=False, force_all_rays=False, max_steps=1024, T_thresh=1e-4, **kwargs):
-        # rays_o, rays_d: [B, N, 3], assumes B == 1
-        # return: image: [B, N, 3], depth: [B, N]
+    def rays_rgb(self,results, rays_o, rays_d, semantic_class_length, dt_gamma=0, bg_color=None, perturb=False, force_all_rays=False, max_steps=1024, T_thresh=1e-4, **kwargs):
 
         prefix = rays_o.shape[:-1]
         rays_o = rays_o.contiguous().view(-1, 3)
         rays_d = rays_d.contiguous().view(-1, 3)
+
 
         N = rays_o.shape[0] # N = B * N, in fact
         device = rays_o.device
@@ -298,9 +295,6 @@ class NeRFRenderer(nn.Module):
         elif bg_color is None:
             bg_color = 1
 
-        results = {}
-
-
         if self.training:
             # setup counter
             counter = self.step_counter[self.local_step % 16]
@@ -314,10 +308,130 @@ class NeRFRenderer(nn.Module):
             #TODO: Idk what this is. Using 3 lines below instead
             sigmas, rgbs,semantics = self(xyzs, dirs)
 
-            #density_outputs = self.density(xyzs) # [M,], use a dict since it may include extra things, like geo_feat for rgb.
-            #sigmas = density_outputs['sigma']
-            #rgbs = self.color(xyzs, dirs, **density_outputs)
-            #semantic = self.semantic(xyzs, dirs, **density_outputs)
+
+            sigmas = self.density_scale * sigmas
+
+            #print(f'valid RGB query ratio: {mask.sum().item() / mask.shape[0]} (total = {mask.sum().item()})')
+
+            # special case for CCNeRF's residual learning
+            if len(sigmas.shape) == 2:
+                print("does this ever happen?")
+                exit()
+                K = sigmas.shape[0]
+                depths = []
+                images = []
+                for k in range(K):
+                    print("This is happening!!")
+                    weights_sum, depth, image, semantic_image = raymarching.composite_rays_train(sigmas[k], rgbs[k],semantics[k], deltas, rays, T_thresh)
+                    image = image + (1 - weights_sum).unsqueeze(-1) * bg_color
+                    depth = torch.clamp(depth - nears, min=0) / (fars - nears)
+                    print("this shouldn't happen")
+                    exit()
+                    images.append(image.view(*prefix, 3))
+                    depths.append(depth.view(*prefix))
+            
+                depth = torch.stack(depths, axis=0) # [K, B, N]
+                image = torch.stack(images, axis=0) # [K, B, N, 3]
+
+            else:
+
+                weights_sum_rgb , depth, image = raymarching.composite_rays_train_rgb(sigmas, rgbs, deltas, rays, T_thresh)
+
+                image = image + (1 - weights_sum_rgb).unsqueeze(-1) * bg_color
+                depth = torch.clamp(depth - nears, min=0) / (fars - nears)
+                image = image.view(*prefix, 3)
+                depth = depth.view(*prefix)
+            
+            results['weights_sum_rgb'] = weights_sum_rgb
+
+        else:
+           
+            # allocate outputs 
+            # if use autocast, must init as half so it won't be autocasted and lose reference.
+            #dtype = torch.half if torch.is_autocast_enabled() else torch.float32
+            # output should always be float32! only network inference uses half.
+            dtype = torch.float32
+            
+            weights_sum_rgb = torch.zeros(N, dtype=dtype, device=device)
+            depth = torch.zeros(N, dtype=dtype, device=device)
+            image = torch.zeros(N, 3, dtype=dtype, device=device)
+            
+            n_alive = N
+            rays_alive = torch.arange(n_alive, dtype=torch.int32, device=device) # [N]
+            rays_t = nears.clone() # [N]
+
+            step = 0
+            
+            while step < max_steps:
+
+                # count alive rays 
+                n_alive = rays_alive.shape[0]
+                
+                # exit loop
+                if n_alive <= 0:
+                    break
+
+                # decide compact_steps
+                n_step = max(min(N // n_alive, 8), 1)
+
+                xyzs, dirs, deltas = raymarching.march_rays(n_alive, n_step, rays_alive, rays_t, rays_o, rays_d, self.bound, self.density_bitfield, self.cascade, self.grid_size, nears, fars, 128, perturb if step == 0 else False, dt_gamma, max_steps)
+
+                sigmas, rgbs,_= self(xyzs, dirs)
+
+                sigmas = self.density_scale * sigmas
+
+                raymarching.composite_rays_rgb(n_alive, n_step, rays_alive, rays_t, sigmas, rgbs, deltas, weights_sum_rgb, depth, image, T_thresh)
+
+                rays_alive = rays_alive[rays_alive >= 0]
+
+                #print(f'step = {step}, n_step = {n_step}, n_alive = {n_alive}, xyzs: {xyzs.shape}')
+
+                step += n_step
+
+
+            image = image + (1 - weights_sum_rgb).unsqueeze(-1) * bg_color
+            depth = torch.clamp(depth - nears, min=0) / (fars - nears)
+            image = image.view(*prefix, 3)
+
+            depth = depth.view(*prefix)
+
+
+        results['depth'] = depth
+        results['image'] = image
+
+
+    def rays_semantic(self,results, rays_o, rays_d, semantic_class_length, dt_gamma=0, bg_color=None, perturb=False, force_all_rays=False, max_steps=1024, T_thresh=1e-4, **kwargs):
+        prefix = rays_o.shape[:-1]
+        rays_o = rays_o.contiguous().view(-1, 3)
+        rays_d = rays_d.contiguous().view(-1, 3)
+
+
+        N = rays_o.shape[0] # N = B * N, in fact
+        device = rays_o.device
+
+        # pre-calculate near far
+        nears, fars = raymarching.near_far_from_aabb(rays_o, rays_d, self.aabb_train if self.training else self.aabb_infer, self.min_near)
+
+        # mix background color
+        if self.bg_radius > 0:
+            # use the bg model to calculate bg_color
+            sph = raymarching.sph_from_ray(rays_o, rays_d, self.bg_radius) # [N, 2] in [-1, 1]
+            bg_color = self.background(sph, rays_d) # [N, 3]
+        elif bg_color is None:
+            bg_color = 1
+
+        if self.training:
+            # setup counter
+            counter = self.step_counter[self.local_step % 16]
+            counter.zero_() # set to 0
+            self.local_step += 1
+
+            xyzs, dirs, deltas, rays = raymarching.march_rays_train(rays_o, rays_d, self.bound, self.density_bitfield, self.cascade, self.grid_size, nears, fars, counter, self.mean_count, perturb, 128, force_all_rays, dt_gamma, max_steps)
+
+            #plot_pointcloud(xyzs.reshape(-1, 3).detach().cpu().numpy())
+            
+            #TODO: Idk what this is. Using 3 lines below instead
+            sigmas, _,semantics = self(xyzs, dirs)
 
             sigmas = self.density_scale * sigmas
 
@@ -346,16 +460,15 @@ class NeRFRenderer(nn.Module):
 
             else:
 
-                weights_sum, depth, image,semantic_image = raymarching.composite_rays_train(sigmas, rgbs,semantics, deltas, rays, T_thresh)
-                image = image + (1 - weights_sum).unsqueeze(-1) * bg_color
-                semantic_image = semantic_image + (1 - weights_sum).unsqueeze(-1) * bg_color
+                weights_sum_semantic, depth ,semantic_image = raymarching.composite_rays_train_semantic(sigmas,semantics,semantic_class_length, deltas, rays, T_thresh)
+
+                semantic_image = semantic_image + (1 - weights_sum_semantic).unsqueeze(-1) * bg_color
                 #semantic_image = semantic_image + (1 - weights_sum).unsqueeze(-1)
                 depth = torch.clamp(depth - nears, min=0) / (fars - nears)
-                image = image.view(*prefix, 3)
-                semantic_image = semantic_image.view(*prefix, SEMANTIC_CLASS_NUM)
+                semantic_image = semantic_image.view(*prefix, semantic_class_length)
                 depth = depth.view(*prefix)
             
-            results['weights_sum'] = weights_sum
+            results['weights_sum_semantic'] = weights_sum_semantic
 
         else:
            
@@ -365,18 +478,17 @@ class NeRFRenderer(nn.Module):
             # output should always be float32! only network inference uses half.
             dtype = torch.float32
             
-            weights_sum = torch.zeros(N, dtype=dtype, device=device)
+            weights_sum_semantics= torch.zeros(N, dtype=dtype, device=device)
             depth = torch.zeros(N, dtype=dtype, device=device)
-            image = torch.zeros(N, 3, dtype=dtype, device=device)
             #NOTE: semantic class length
-            semantic_image = torch.zeros(N, SEMANTIC_CLASS_NUM, dtype=dtype, device=device)
+            semantic_image = torch.zeros(N, semantic_class_length, dtype=dtype, device=device)
             
             n_alive = N
             rays_alive = torch.arange(n_alive, dtype=torch.int32, device=device) # [N]
             rays_t = nears.clone() # [N]
 
             step = 0
-            
+
             while step < max_steps:
 
                 # count alive rays 
@@ -391,13 +503,10 @@ class NeRFRenderer(nn.Module):
 
                 xyzs, dirs, deltas = raymarching.march_rays(n_alive, n_step, rays_alive, rays_t, rays_o, rays_d, self.bound, self.density_bitfield, self.cascade, self.grid_size, nears, fars, 128, perturb if step == 0 else False, dt_gamma, max_steps)
 
-                sigmas, rgbs,semantics = self(xyzs, dirs)
-                # density_outputs = self.density(xyzs) # [M,], use a dict since it may include extra things, like geo_feat for rgb.
-                # sigmas = density_outputs['sigma']
-                # rgbs = self.color(xyzs, dirs, **density_outputs)
+                sigmas, _,semantics = self(xyzs, dirs)
                 sigmas = self.density_scale * sigmas
 
-                raymarching.composite_rays(n_alive, n_step, rays_alive, rays_t, sigmas, rgbs,semantics, deltas, weights_sum, depth, image,semantic_image, T_thresh)
+                raymarching.composite_rays_semantic(n_alive, n_step, rays_alive, rays_t, sigmas,semantics, semantic_class_length, deltas, weights_sum_semantics, depth,semantic_image, T_thresh)
 
                 rays_alive = rays_alive[rays_alive >= 0]
 
@@ -405,12 +514,10 @@ class NeRFRenderer(nn.Module):
 
                 step += n_step
 
-            image = image + (1 - weights_sum).unsqueeze(-1) * bg_color
-            semantic_image = semantic_image + (1 - weights_sum).unsqueeze(-1) * bg_color
+            semantic_image = semantic_image + (1 - weights_sum_semantics).unsqueeze(-1) * bg_color
             #semantic_image = semantic_image + (1 - weights_sum).unsqueeze(-1)
             depth = torch.clamp(depth - nears, min=0) / (fars - nears)
-            image = image.view(*prefix, 3)
-            semantic_image= semantic_image.view(*prefix, SEMANTIC_CLASS_NUM)
+            semantic_image= semantic_image.view(*prefix, semantic_class_length)
 
             #NOTE: semantic class length
             #semantics= semantics.view(*prefix, 100)
@@ -422,9 +529,16 @@ class NeRFRenderer(nn.Module):
         #$semantic_image = torch.sigmoid(semantic_image)
 
         results['depth'] = depth
-        results['image'] = image
         results['semantic'] = semantic_image
-        #results['semantic'] = image
+
+    def run_cuda(self, rays_o, rays_d, semantic_class_length, dt_gamma=0, bg_color=None, perturb=False, force_all_rays=False, max_steps=1024, T_thresh=1e-4, **kwargs):
+        # rays_o, rays_d: [B, N, 3], assumes B == 1
+        # return: image: [B, N, 3], depth: [B, N]
+
+        results = {}
+
+        self.rays_rgb(results, rays_o, rays_d, semantic_class_length, dt_gamma, bg_color, perturb, force_all_rays, max_steps, T_thresh, **kwargs)
+        self.rays_semantic(results, rays_o, rays_d, semantic_class_length, dt_gamma, bg_color, perturb, force_all_rays, max_steps, T_thresh, **kwargs)
 
         return results
 
@@ -590,7 +704,7 @@ class NeRFRenderer(nn.Module):
         #print(f'[density grid] min={self.density_grid.min().item():.4f}, max={self.density_grid.max().item():.4f}, mean={self.mean_density:.4f}, occ_rate={(self.density_grid > 0.01).sum() / (128**3 * self.cascade):.3f} | [step counter] mean={self.mean_count}')
 
 
-    def render(self, rays_o, rays_d, staged=False, max_ray_batch=4096, **kwargs):
+    def render(self, rays_o, rays_d, semantic_class_length, staged=False, max_ray_batch=4096, **kwargs):
         # rays_o, rays_d: [B, N, 3], assumes B == 1
         # return: pred_rgb: [B, N, 3]
 
@@ -627,6 +741,6 @@ class NeRFRenderer(nn.Module):
             results['semantic'] = semantic 
 
         else:
-            results = _run(rays_o, rays_d, **kwargs)
+            results = _run(rays_o, rays_d, semantic_class_length, **kwargs)
 
         return results

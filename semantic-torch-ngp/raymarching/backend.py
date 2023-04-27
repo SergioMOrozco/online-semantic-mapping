@@ -32,7 +32,9 @@ _backend = load(name='_raymarching',
                 extra_cflags=c_flags,
                 extra_cuda_cflags=nvcc_flags,
                 sources=[os.path.join(_src_path, 'src', f) for f in [
-                    'raymarching.cu',
+                    'raymarching_rgb.cu',
+                    'raymarching_utils.cu',
+                    'raymarching_semantic.cu',
                     'bindings.cpp',
                 ]],
                 )

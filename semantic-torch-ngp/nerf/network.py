@@ -75,7 +75,7 @@ class NeRFNetwork(NeRFRenderer):
                 
                 semantic_net.append(nn.Linear(in_dim, out_dim, bias=False))
 
-            self.semantic_net = nn.ModuleList(semantic_net)
+            self.semantic_net= nn.ModuleList(semantic_net)
         else:
             self.semantic_net = None
         
@@ -98,7 +98,7 @@ class NeRFNetwork(NeRFRenderer):
             
             color_net.append(nn.Linear(in_dim, out_dim, bias=False))
 
-        self.color_net = nn.ModuleList(color_net)
+        self.color_net= nn.ModuleList(color_net)
 
 
 
