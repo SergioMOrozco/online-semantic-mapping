@@ -17,7 +17,7 @@
   "aabb_scale": 32,
   "frames": [
     {
-      "file_path": "./images/rgb_585.png",
+      "file_path": "./images/rgb_1.png",
       "sharpness": 539.8043355865059,
       "transform_matrix": [
         [
@@ -47,7 +47,7 @@
       ]
     },
     {
-      "file_path": "./images/rgb_586.png",
+      "file_path": "./images/rgb_2.png",
       "sharpness": 539.8043355865059,
       "transform_matrix": [
         [

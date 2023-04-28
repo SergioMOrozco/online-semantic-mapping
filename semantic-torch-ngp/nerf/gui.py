@@ -54,6 +54,14 @@ class OrbitCamera:
 
 class NeRFGUI:
     def __init__(self, opt, trainer, train_loader=None, debug=True):
+        self.random_colors = list([np.random.choice(range(256), size=3) for i in range (150)])
+
+        self.random_colors[0] = [256,256,256]
+        self.random_colors[1] = [244, 35,232]
+        self.random_colors[2] = [ 70, 70, 70]
+        self.random_colors[3] = [102,102,156]
+        self.random_colors[4] = [190,153,153]
+
         self.opt = opt # shared with the trainer's opt to support in-place modification of rendering parameters.
         self.W = opt.W
         self.H = opt.H
@@ -112,9 +120,11 @@ class NeRFGUI:
 
     def prepare_buffer(self, outputs):
         if self.mode == 'image':
-            #print(self.mode)
-            #print(outputs['image'])
-            #print(outputs['image'].shape)
+            # print(self.mode)
+            # print(outputs['image'])
+            # print(outputs['image'].shape)
+
+
             return outputs['image']
         elif self.mode == "depth":
             #print(self.mode)
@@ -125,8 +135,33 @@ class NeRFGUI:
             #print(self.mode)
             #print(outputs['semantic'])
             #print(outputs['semantic'].shape)
-            return outputs['semantic']
-            #return np.expand_dims(outputs['semantic'] / 255., -1).repeat(3, -1)
+            #return outputs['semantic']
+
+            # img = outputs['semantic']
+            #
+            # img_color = np.zeros((*img.shape, 3))
+            #
+            # for key,color in enumerate(self.random_colors):
+            #     img_color[img == key] = color
+            #
+            #
+            # cv2.imshow("img",img_color / 255.)
+            # cv2.waitKey(1)
+            #
+            # return img_color / 255.
+
+            img = outputs['semantic']
+
+            img_color = np.zeros((*img.shape, 3))
+
+            for key,color in enumerate(self.random_colors):
+                img_color[img == key] = color
+
+
+            cv2.imshow("img",img_color / 255.)
+            cv2.waitKey(1)
+
+            return np.expand_dims(outputs['semantic'] / 255., -1).repeat(3, -1)
 
     
     def test_step(self):

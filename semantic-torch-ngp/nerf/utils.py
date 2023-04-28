@@ -34,7 +34,7 @@ import lpips
 from torchmetrics.functional import structural_similarity_index_measure
 
 
-SEMANTIC_CLASS_NUM = 3
+SEMANTIC_CLASS_NUM = 100
 
 def custom_meshgrid(*args):
     # ref: https://pytorch.org/docs/stable/generated/torch.meshgrid.html?highlight=meshgrid#torch.meshgrid
@@ -397,7 +397,8 @@ class Trainer(object):
             self.criterion_lpips = lpips.LPIPS(net='alex').to(self.device)
 
         if optimizer is None:
-            self.optimizer = optim.Adam(self.model.parameters(), lr=0.001, weight_decay=5e-4) # naive adam
+            #self.optimizer = optim.Adam(self.model.parameters(), lr=0.0001, weight_decay=5e-5) # naive adam
+            self.optimizer = optim.Adam(self.model.parameters(), lr=0.01, weight_decay=5e-5) # naive adam
         else:
             self.optimizer = optimizer(self.model)
 
@@ -495,6 +496,8 @@ class Trainer(object):
         images = data['images'] # [B, N, 3/4]
         semantics = data['semantics'] # [B, N, 1]
 
+
+
         B_image, N_image, C_image = images.shape
         B_semantic, N_semantic, C_semantic= semantics.shape
 
@@ -519,10 +522,12 @@ class Trainer(object):
         #NOTE: Where loss is calculated
         # MSE loss
         #loss = self.criterion(pred_rgb, gt_rgb).mean(-1) # [B, N, 3] --> [B, N]
-        loss= self.semantic_criterion(pred_semantic, gt_semantics).mean(-1) # [B, N, 3] --> [B, N]
-        loss_semantic = self.criterion(pred_rgb, gt_rgb).mean(-1) # [B, N, 3] --> [B, N]
+        loss = self.criterion(pred_rgb, gt_rgb).mean(-1) # [B, N, 3] --> [B, N]
 
 
+        #print("BEFORE")
+        #print(pred_semantic)
+        #print(pred_semantic.shape)
 
 
         #pred_semantic = np.array([np.argmax(a.detach().cpu().numpy(), axis = 0) for a in pred_semantic[0]])
@@ -534,19 +539,31 @@ class Trainer(object):
         #pred_semantic = pred_semantic.long()
 
 
+        gt_semantics = gt_semantics.to(torch.int64)
+        gt_semantics = torch.nn.functional.one_hot(gt_semantics, num_classes = SEMANTIC_CLASS_NUM)
+        gt_semantics = torch.squeeze(gt_semantics,2)
         #gt_semantics = gt_semantics.view(gt_semantics.shape[0],gt_semantics.shape[1])
-        #gt_semantics = gt_semantics.long()
+        gt_semantics = gt_semantics.float()
 
+        # print("RGB")
+        # print ("GT")
+        # print(gt_rgb)
+        # print(gt_rgb.shape)
+        # print("PRED")
+        # print(pred_rgb)
+        # print(pred_rgb.shape)
         #
+        # print("SEMANTIC")
+        # print ("GT")
         # print(gt_semantics)
-        # exit()
+        # print(gt_semantics.shape)
+        # print("PRED")
+        # print(pred_semantic)
+        # print(pred_semantic.shape)
 
-        #loss_semantic = self.semantic_criterion(pred_semantic, gt_semantics).mean(-1) # [B, N, 1] --> [B, N]
-        #print(loss_semantic)
 
-        # print("HELLO")
-        # print(loss_semantic)
-        # print("GOODBYE")
+
+        loss_semantic= self.semantic_criterion(pred_semantic, gt_semantics).mean(-1) # [B, N, 3] --> [B, N]
 
         # patch-based rendering
         if self.opt.patch_size > 1:
@@ -588,8 +605,11 @@ class Trainer(object):
             # put back
             self.error_map[index] = error_map
 
-        #loss = loss + ( 0.5 * loss_semantic)
-        loss = loss + loss_semantic 
+        #loss = loss + ( 0.04 * loss_semantic)
+        loss = loss + (0.005 * loss_semantic)
+        #loss = loss_semantic 
+        #loss = loss + loss_semantic
+
 
         loss = loss.mean()
 
@@ -868,16 +888,16 @@ class Trainer(object):
 
         if self.opt.color_space == 'linear':
             preds = linear_to_srgb(preds)
-            preds_semantic = linear_to_srgb(preds_semantic)
+            #preds_semantic = linear_to_srgb(preds_semantic)
 
-        #pred_semantic = preds_semantic[0].detach().cpu().numpy()
+        pred_semantic = preds_semantic[0].detach().cpu().numpy()
 
 
-        #pred_semantic = pred_semantic.argmax(axis=2)
+        pred_semantic = pred_semantic.argmax(axis=2)
 
 
         pred = preds[0].detach().cpu().numpy()
-        pred_semantic = preds_semantic[0].detach().cpu().numpy()
+        #pred_semantic = preds_semantic[0].detach().cpu().numpy()
         pred_depth = preds_depth[0].detach().cpu().numpy()
 
 

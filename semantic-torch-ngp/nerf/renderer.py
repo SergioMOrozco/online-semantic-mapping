@@ -11,8 +11,6 @@ import raymarching
 from .utils import custom_meshgrid
 
 
-SEMANTIC_CLASS_NUM = 3
-
 def sample_pdf(bins, weights, n_samples, det=False):
     # This implementation is from NeRF
     # bins: [B, T], old_z_vals
@@ -225,7 +223,7 @@ class NeRFRenderer(nn.Module):
 
 
         results['depth'] = depth
-        results['semantic'] = image
+        results['image'] = image
 
 
     def rays_semantic(self,results, rays_o, rays_d, semantic_class_length, dt_gamma=0, bg_color=None, perturb=False, force_all_rays=False, max_steps=1024, T_thresh=1e-4, **kwargs):
@@ -262,8 +260,8 @@ class NeRFRenderer(nn.Module):
 
             weights_sum_semantic, depth ,semantic_image = raymarching.composite_rays_train_semantic(sigmas,semantics,semantic_class_length, deltas, rays, T_thresh)
 
-            semantic_image = semantic_image + (1 - weights_sum_semantic).unsqueeze(-1) * bg_color
-            #semantic_image = semantic_image + (1 - weights_sum).unsqueeze(-1)
+            #semantic_image = semantic_image + (1 - weights_sum_semantic).unsqueeze(-1) * bg_color
+            #semantic_image = semantic_image + (1 - weights_sum_semantic).unsqueeze(-1)
             depth = torch.clamp(depth - nears, min=0) / (fars - nears)
             semantic_image = semantic_image.view(*prefix, semantic_class_length)
             depth = depth.view(*prefix)
@@ -314,7 +312,8 @@ class NeRFRenderer(nn.Module):
 
                 step += n_step
 
-            semantic_image = semantic_image + (1 - weights_sum_semantics).unsqueeze(-1) * bg_color
+            #semantic_image = semantic_image + (1 - weights_sum_semantics).unsqueeze(-1) * bg_color
+            #semantic_image = semantic_image + (1 - weights_sum_semantics).unsqueeze(-1)
             #semantic_image = semantic_image + (1 - weights_sum).unsqueeze(-1)
             depth = torch.clamp(depth - nears, min=0) / (fars - nears)
             semantic_image= semantic_image.view(*prefix, semantic_class_length)
@@ -325,10 +324,11 @@ class NeRFRenderer(nn.Module):
         #TODO: Add softmax to semantic image
         #softmax = nn.Softmax(dim=2)
 
-        #$semantic_image = torch.sigmoid(semantic_image)
+        semantic_image = torch.sigmoid(semantic_image)
 
         results['depth'] = depth
-        results['image'] = semantic_image
+        results['semantic'] = semantic_image
+        #print(semantic_image)
 
     def run_cuda(self, rays_o, rays_d, semantic_class_length, dt_gamma=0, bg_color=None, perturb=False, force_all_rays=False, max_steps=1024, T_thresh=1e-4, **kwargs):
         # rays_o, rays_d: [B, N, 3], assumes B == 1
@@ -521,7 +521,7 @@ class NeRFRenderer(nn.Module):
         if staged and not self.cuda_ray:
             depth = torch.empty((B, N), device=device)
             image = torch.empty((B, N, 3), device=device)
-            semantic = torch.empty((B, N, SEMANTIC_CLASS_NUM), device=device)
+            semantic = torch.empty((B, N, semantic_class_length), device=device)
 
             for b in range(B):
                 head = 0

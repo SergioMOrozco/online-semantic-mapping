@@ -202,8 +202,6 @@ class NeRFDataset:
                 semantic_f_path = f_path.replace("rgb","semantic_class")
                 semantic_f_path = semantic_f_path.replace("images","semantic_class")
                 #semantic_f_path = f_path
-                #print(f_path)
-                #print(semantic_f_path)
 
 
                 # there are non-exist paths in fox...
@@ -355,6 +353,7 @@ class NeRFDataset:
             if self.training:
                 # NOTE: we are not creating rays for every pixel. We are only using a subset of pixels for some reason
                 semantics = torch.gather(semantics.view(B, -1, 1), 1, torch.stack( [rays['inds']], -1)) # [B, N, 3/4]
+
 
             results['semantics'] = semantics 
         
