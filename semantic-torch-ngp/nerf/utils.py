@@ -217,6 +217,8 @@ class PSNRMeter:
         self.N = 0
 
     def prepare_inputs(self, *inputs):
+        print("does this happen?")
+        exit()
         outputs = []
         for i, inp in enumerate(inputs):
             if torch.is_tensor(inp):
@@ -258,6 +260,8 @@ class SSIMMeter:
         self.N = 0
 
     def prepare_inputs(self, *inputs):
+        print("does this happen?")
+        exit()
         outputs = []
         for i, inp in enumerate(inputs):
             inp = inp.permute(0, 3, 1, 2).contiguous() # [B, 3, H, W]
@@ -299,6 +303,8 @@ class LPIPSMeter:
         self.N = 0
 
     def prepare_inputs(self, *inputs):
+        print("does this happen?")
+        exit()
         outputs = []
         for i, inp in enumerate(inputs):
             inp = inp.permute(0, 3, 1, 2).contiguous() # [B, 3, H, W]
@@ -512,8 +518,11 @@ class Trainer(object):
 
         #NOTE: Where loss is calculated
         # MSE loss
-        loss = self.criterion(pred_rgb, gt_rgb).mean(-1) # [B, N, 3] --> [B, N]
-        loss_semantic = self.semantic_criterion(pred_semantic, gt_semantics).mean(-1) # [B, N, 3] --> [B, N]
+        #loss = self.criterion(pred_rgb, gt_rgb).mean(-1) # [B, N, 3] --> [B, N]
+        loss= self.semantic_criterion(pred_semantic, gt_semantics).mean(-1) # [B, N, 3] --> [B, N]
+        loss_semantic = self.criterion(pred_rgb, gt_rgb).mean(-1) # [B, N, 3] --> [B, N]
+
+
 
 
         #pred_semantic = np.array([np.argmax(a.detach().cpu().numpy(), axis = 0) for a in pred_semantic[0]])
@@ -579,8 +588,8 @@ class Trainer(object):
             # put back
             self.error_map[index] = error_map
 
-        loss = loss + ( 0.04 * loss_semantic)
-        #loss = loss + loss_semantic 
+        #loss = loss + ( 0.5 * loss_semantic)
+        loss = loss + loss_semantic 
 
         loss = loss.mean()
 
@@ -589,7 +598,7 @@ class Trainer(object):
         # loss_ws = - 1e-1 * pred_weights_sum * torch.log(pred_weights_sum) # entropy to encourage weights_sum to be 0 or 1.
         # loss = loss + loss_ws.mean()
 
-        return pred_rgb, gt_rgb, loss
+        return pred_rgb, gt_rgb, pred_semantic, gt_semantics, loss
         #return pred_rgb, gt_rgb, loss 
 
     def eval_step(self, data):
@@ -785,7 +794,7 @@ class Trainer(object):
             self.optimizer.zero_grad()
 
             with torch.cuda.amp.autocast(enabled=self.fp16):
-                preds, truths, loss = self.train_step(data)
+                preds_rgb, truths_rgb, preds_semantic, truths_semantic, loss = self.train_step(data)
          
             self.scaler.scale(loss).backward()
             self.scaler.step(self.optimizer)

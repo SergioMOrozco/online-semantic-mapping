@@ -120,8 +120,8 @@ __global__ void kernel_composite_rays_train_forward(
     }
 
     sigmas += offset;
-    deltas += offset * 2;
     semantics += offset * semantic_class_length;
+    deltas += offset * 2;
 
     // accumulate 
     uint32_t step = 0;
@@ -225,7 +225,9 @@ __global__ void kernel_composite_rays_train_backward(
     if (num_steps == 0 || offset + num_steps > M) return;
 
     grad_weights_sum += index;
+    grad_semantic_image += index * semantic_class_length;
     weights_sum += index;
+    semantic_image += index * semantic_class_length;
     sigmas += offset;
     semantics += offset * semantic_class_length;
     deltas += offset * 2;
@@ -265,7 +267,7 @@ __global__ void kernel_composite_rays_train_backward(
         
         // check https://note.kiui.moe/others/nerf_gradient/ for the gradient calculation.
 
-        for (uint8_t i = 0; i < 3; i++) 
+        for (uint8_t i = 0; i < semantic_class_length; i++) 
         {
           grad_semantics[i] = grad_semantic_image[i] * weight;
         }
@@ -273,7 +275,7 @@ __global__ void kernel_composite_rays_train_backward(
 
         scalar_t sum = 0; 
 
-        for (uint8_t i = 0; i < 3; i++) 
+        for (uint8_t i = 0; i < semantic_class_length; i++) 
         {
           sum += grad_semantic_image[i] * (T * semantics[i] - (semantic_ids_final[i] - semantic_ids[i]));
         }
@@ -417,7 +419,7 @@ __global__ void kernel_composite_rays(
     weights_sum[0] = weight_sum; // this is the thing I needed!
     depth[0] = d;
 
-    for (uint8_t i = 0; i < 3; i++) 
+    for (uint8_t i = 0; i < semantic_class_length; i++) 
     {
       semantic_image[i] = semantic_ids[i];
     }
