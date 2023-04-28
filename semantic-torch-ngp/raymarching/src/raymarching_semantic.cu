@@ -114,7 +114,7 @@ __global__ void kernel_composite_rays_train_forward(
 
         for (uint8_t i = 0; i < semantic_class_length; i++) 
         {
-          semantic_image[index * 3 + i] = 0;
+          semantic_image[index * semantic_class_length + i] = 0;
         }
         return;
     }
@@ -139,7 +139,7 @@ __global__ void kernel_composite_rays_train_forward(
 
 
         //TODO: make semantic class length a parameter
-        for (uint8_t i = 0; i < 3; i++) 
+        for (uint8_t i = 0; i < semantic_class_length; i++) 
         {
           semantic_ids[i] += weight * semantics[i];
         }
@@ -170,9 +170,9 @@ __global__ void kernel_composite_rays_train_forward(
     weights_sum[index] = ws; // weights_sum
     depth[index] = d;
 
-    for (uint8_t i = 0; i < 3; i++) 
+    for (uint8_t i = 0; i < semantic_class_length; i++) 
     {
-      semantic_image[index * 3 + i] = semantic_ids[i];
+      semantic_image[index * semantic_class_length + i] = semantic_ids[i];
     }
 }
 
@@ -242,7 +242,7 @@ __global__ void kernel_composite_rays_train_backward(
 
     scalar_t semantic_ids_final[1000] ={0};
 
-    for (uint8_t i = 0; i < 3; i++) 
+    for (uint8_t i = 0; i < semantic_class_length; i++) 
     {
       semantic_ids_final[i] = semantic_image[i];
     }
@@ -389,7 +389,7 @@ __global__ void kernel_composite_rays(
         t += deltas[1]; // real delta
         d += weight * t;
 
-        for (uint8_t i = 0; i < 3; i++) 
+        for (uint8_t i = 0; i < semantic_class_length; i++) 
         {
           semantic_ids[i] += weight * semantics[i];
         }
