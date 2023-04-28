@@ -292,7 +292,7 @@ class _composite_rays_train_semantic(Function):
 
         # NOTE: grad_depth is not used now! It won't be propagated to sigmas.
 
-        semantics_class_length = 3
+        semantics_class_length = 100
 
         grad_weights_sum = grad_weights_sum.contiguous()
         grad_semantic_image = grad_semantic_image.contiguous()

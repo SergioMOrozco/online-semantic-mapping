@@ -18,12 +18,12 @@ class NeRFNetwork(NeRFRenderer):
                  num_layers_color=3,
                  hidden_dim_color=64,
                  num_layers_semantic=3,
-                 hidden_dim_semantic=64,
+                 hidden_dim_semantic=128,
                  num_layers_bg=2,
                  hidden_dim_bg=64,
                  bound=1,
                  use_semantics = True,
-                 num_semantic_classes = 3,
+                 num_semantic_classes = 100,
                  **kwargs,
                  ):
         super().__init__(bound, **kwargs)
@@ -58,18 +58,18 @@ class NeRFNetwork(NeRFRenderer):
             self.hidden_dim_semantic = hidden_dim_semantic
             self.num_layers_semantic = num_layers_semantic
             # Encoding is Sphere harmonics. Idk what this is
-            self.encoder_dir, self.in_dim_dir = get_encoder(encoding_dir)
+            #self.encoder_dir, self.in_dim_dir = get_encoder(encoding_dir)
 
             semantic_net =  []
             for l in range(num_layers_semantic):
                 if l == 0:
-                    in_dim = self.in_dim_dir + self.geo_feat_dim
-                    #in_dim = self.geo_feat_dim
+                    #in_dim = self.in_dim_dir + self.geo_feat_dim
+                    in_dim = self.geo_feat_dim
                 else:
                     in_dim = hidden_dim_semantic
                 
                 if l == num_layers_semantic - 1:
-                    out_dim = num_semantic_classes # 3 rgb
+                    out_dim = num_semantic_classes 
                 else:
                     out_dim = hidden_dim_semantic
                 
@@ -104,6 +104,8 @@ class NeRFNetwork(NeRFRenderer):
 
         # background network
         if self.bg_radius > 0:
+            print("this happens?")
+            exit()
             self.num_layers_bg = num_layers_bg        
             self.hidden_dim_bg = hidden_dim_bg
             self.encoder_bg, self.in_dim_bg = get_encoder(encoding_bg, input_dim=2, num_levels=4, log2_hashmap_size=19, desired_resolution=2048) # much smaller hashgrid 
@@ -165,8 +167,8 @@ class NeRFNetwork(NeRFRenderer):
 
         # NOTE: This is where density is fed into color
         # TODO: I dont think semantic takes in viewing direction
-        h = torch.cat([d, geo_feat], dim=-1)
-        #h = semantic_h
+        #h = torch.cat([d, geo_feat], dim=-1)
+        h = semantic_h
         for l in range(self.num_layers_semantic):
             h = self.semantic_net[l](h)
             if l != self.num_layers_semantic - 1:
@@ -175,7 +177,7 @@ class NeRFNetwork(NeRFRenderer):
         semantic = h
         
         # sigmoid activation for rgb
-        semantic = torch.sigmoid(h)
+        #semantic = torch.sigmoid(h)
 
         return sigma, color, semantic
 
@@ -214,6 +216,7 @@ class NeRFNetwork(NeRFRenderer):
         rgbs = torch.sigmoid(h)
 
         return rgbs
+
 
     # allow masked inference
     def color(self, x, d, mask=None, geo_feat=None, **kwargs):
@@ -263,16 +266,16 @@ class NeRFNetwork(NeRFRenderer):
             geo_feat = geo_feat[mask]
 
         #NOTE: Remember, we encode direction seperately
-        d = self.encoder_dir(d)
-        h = torch.cat([d, geo_feat], dim=-1)
-        #h = geo_feat 
+        # d = self.encoder_dir(d)
+        # h = torch.cat([d, geo_feat], dim=-1)
+        h = geo_feat 
         for l in range(self.num_layers_semantic):
             h = self.semantic_net[l](h)
             if l != self.num_layers_semantic - 1:
                 h = F.relu(h, inplace=True)
         
         # sigmoid activation for rgb
-        h = torch.sigmoid(h)
+        #h = torch.sigmoid(h)
 
 
         if mask is not None:
@@ -293,12 +296,13 @@ class NeRFNetwork(NeRFRenderer):
         params = [
             {'params': self.encoder.parameters(), 'lr': lr},
             {'params': self.sigma_net.parameters(), 'lr': lr},
-            {'params': self.encoder_dir.parameters(), 'lr': lr},
             {'params': self.semantic_net.parameters(), 'lr': lr}, 
+            {'params': self.encoder_dir.parameters(), 'lr': lr},
             {'params': self.color_net.parameters(), 'lr': lr}, 
         ]
         if self.bg_radius > 0:
             params.append({'params': self.encoder_bg.parameters(), 'lr': lr})
-            params.append({'params': self.bg_net.parameters(), 'lr': lr})
+            params.append({'params': self.encoder_bg_semantic.parameters(), 'lr': lr})
+            params.append({'params': self.bg_net_semantic.parameters(), 'lr': lr})
         
         return params
