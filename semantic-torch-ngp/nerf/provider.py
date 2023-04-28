@@ -199,9 +199,9 @@ class NeRFDataset:
                     f_path += '.png' # so silly...
 
                 #TODO: this should be in transforms.json
-                #semantic_f_path = f_path.replace("rgb","semantic_class")
-                #semantic_f_path = semantic_f_path.replace("images","semantic_class")
-                semantic_f_path = f_path
+                semantic_f_path = f_path.replace("rgb","semantic_class")
+                semantic_f_path = semantic_f_path.replace("images","semantic_class")
+                #semantic_f_path = f_path
                 #print(f_path)
                 #print(semantic_f_path)
 
@@ -230,20 +230,20 @@ class NeRFDataset:
                 # add support for the alpha channel as a mask.
                 if image.shape[-1] == 3: 
                     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                    semantic = cv2.cvtColor(semantic, cv2.COLOR_BGR2RGB)
+                    #semantic = cv2.cvtColor(semantic, cv2.COLOR_BGR2RGB)
                 else:
                     image = cv2.cvtColor(image, cv2.COLOR_BGRA2RGBA)
-                    semantic = cv2.cvtColor(semantic, cv2.COLOR_BGRA2RGBA)
+                    #semantic = cv2.cvtColor(semantic, cv2.COLOR_BGRA2RGBA)
 
                 if image.shape[0] != self.H or image.shape[1] != self.W:
                     image = cv2.resize(image, (self.W, self.H), interpolation=cv2.INTER_AREA)
 
                 if semantic.shape[0] != self.H or semantic.shape[1] != self.W:
-                    #semantic = cv2.resize(semantic, (self.W, self.H), interpolation=cv2.INTER_NEAREST)
-                    semantic = cv2.resize(semantic, (self.W, self.H), interpolation=cv2.INTER_AREA)
+                    semantic = cv2.resize(semantic, (self.W, self.H), interpolation=cv2.INTER_NEAREST)
+                    #semantic = cv2.resize(semantic, (self.W, self.H), interpolation=cv2.INTER_AREA)
                     
                 image = image.astype(np.float32) / 255 # [H, W, 3/4]
-                semantic = semantic.astype(np.float32) / 255 # [H, W, 3/4]
+                #semantic = semantic.astype(np.float32) / 255 # [H, W, 3/4]
 
                 self.poses.append(pose)
                 self.images.append(image)
@@ -354,8 +354,7 @@ class NeRFDataset:
             semantics = self.semantics[index].to(self.device) # [B, H, W]
             if self.training:
                 # NOTE: we are not creating rays for every pixel. We are only using a subset of pixels for some reason
-                SEMANTIC_C = semantics.shape[-1]
-                semantics = torch.gather(semantics.view(B, -1, SEMANTIC_C), 1, torch.stack(SEMANTIC_C * [rays['inds']], -1)) # [B, N, 3/4]
+                semantics = torch.gather(semantics.view(B, -1, 1), 1, torch.stack( [rays['inds']], -1)) # [B, N, 3/4]
 
             results['semantics'] = semantics 
         
