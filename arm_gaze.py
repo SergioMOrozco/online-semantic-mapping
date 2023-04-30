@@ -31,7 +31,7 @@ from bosdyn.client.gripper_camera_param import GripperCameraParamClient
 HOSTNAME = "tusker.rlab.cs.brown.edu"
 
 
-def do_stuff(robot,robot_state_client,command_client,traj_data,move_data):
+def do_stuff(model,robot,robot_state_client,command_client,traj_data,move_data):
 
         ## Convert the location from the moving base frame to the world frame.
         robot_state = robot_state_client.get_robot_state()
@@ -163,147 +163,19 @@ def do_stuff(robot,robot_state_client,command_client,traj_data,move_data):
         gaze_command_id = command_client.robot_command(synchro_command)
         robot.logger.info('Sending gaze trajectory with hand movement.')
 
+        sleep(0.5)
+
+        #TODO: build thread here
+        thread = model.create_thread()
+        model.start_taking_images(thread)
+
         # Wait until the robot completes the gaze before powering off.
         block_until_arm_arrives(command_client, gaze_command_id, timeout_sec=traj_time + 3.0)
+
+        model.stop_taking_images(thread)
+        sleep(1.0)
         
         
-        
-def get_pose_from_circle_vertical(vertical_angle_offset):
-
-    # x, y, z
-    # 4 in front of robot
-    radius = 2
-
-    angle_reference = 180
-
-    angle = vertical_angle_offset + angle_reference
-
-    x= (radius * math.cos(angle * math.pi / 180.))
-    z= (radius * math.sin(angle * math.pi / 180.))
-
-    if angle - angle_reference > 0:
-        pitch = vertical_angle_offset 
-    else:
-        pitch = vertical_angle_offset 
-
-    ## add offset
-    x += radius
-
-    print("X: ",x,"Z: ",z,"Pitch: ",pitch)
-
-    rot = math_helpers.Quat().from_pitch(pitch)
-
-    pose = math_helpers.SE3Pose(x=x,y=0,z=z,rot=rot)
-
-    return pose
-
-def get_pose_from_circle_horizontal(horizontal_angle_offset):
-
-    # x, y, z
-    # 4 in front of robot
-    radius = 2
-
-    angle_reference = 270
-    angle = horizontal_angle_offset + angle_reference
-
-    x= (radius * math.cos(angle * math.pi / 180.))
-    y= (radius * math.sin(angle * math.pi / 180.))
-
-    if angle - angle_reference > 0:
-        yaw = -horizontal_angle_offset 
-    else:
-        yaw = -horizontal_angle_offset 
-    roll = 0
-    pitch = 0
-
-    # go from cartesian coordinate system to gripper coordinate system
-    tmp = x
-    x = y 
-    y = -tmp
-
-    ## add offset
-    x += radius
-
-    #print("X: ",x,"Y: ",y,"Yaw: ",yaw)
-
-    rot = math_helpers.Quat().from_yaw(yaw)
-
-    pose = math_helpers.SE3Pose(x=x,y=y,z=0,rot=rot)
-
-
-    return x,y,yaw
-
-def stuff(robot,robot_state_client,command_client, start, end):
-
-    x_start = 0
-    y_start = 0
-    z_start = 0
-
-    start_horizontal_angle_offset = 0
-    start_vertical_angle_offset = 0
-    end_horizontal_angle_offset = 0
-    end_vertical_angle_offset = 0
-
-    seconds = 2
-
-
-    if start == "left":
-        start_horizontal_angle_offset = -30
-        start_vertical_angle_offset = 0
-
-    if start == "right":
-        start_horizontal_angle_offset = 30
-        start_vertical_angle_offset = 0
-
-    if start == "center":
-        start_horizontal_angle_offset = 0
-        start_vertical_angle_offset = 0
-
-    if start == "center_up":
-        start_horizontal_angle_offset = 0
-        start_vertical_angle_offset = -30
-
-    if end == "left":
-        end_horizontal_angle_offset = -30
-        end_vertical_angle_offset = 0
-
-    if end == "right":
-        end_horizontal_angle_offset = 30
-        end_vertical_angle_offset = 0
-
-    if end == "center":
-        end_horizontal_angle_offset = 0
-        end_vertical_angle_offset = 0
-
-    if end == "center_up":
-        end_horizontal_angle_offset = 0
-        end_vertical_angle_offset = -30
-
-    if not start_horizontal_angle_offset - end_horizontal_angle_offset == 0:
-        sample_angles = np.linspace(start_horizontal_angle_offset,end_horizontal_angle_offset, num=5)
-
-        for sample in sample_angles:
-            gripper_pose = get_pose_from_circle_horizontal(sample)
-
-            arm_commad = RobotCommandBuilder.arm_pose_command(gripper_pose.x,gripper_pose.y,gripper_pose.z,gripper_pose.rot.w,gripper_pose.rot.x,gripper_pose.rot.y,gripper_pose.rot.z,frame_helpers.VISION_FRAME,NAME,seconds)
-
-            cmd_id = command_client.robot_command(arm_command)
-
-            block_until_arm_arrives(command_client, cmd_id)
-
-    elif not start_vertical_angle_offset - end_vertical_angle_offset == 0:
-        sample_angles = np.linspace(start_vertical_angle_offset,end_vertical_angle_offset, num=5)
-
-        for sample in sample_angles:
-            gripper_pose = get_pose_from_circle_vertical(sample)
-
-            arm_command = RobotCommandBuilder.arm_pose_command(gripper_pose.x,gripper_pose.y,gripper_pose.z,gripper_pose.rot.w,gripper_pose.rot.x,gripper_pose.rot.y,gripper_pose.rot.z,frame_helpers.VISION_FRAME_NAME,seconds)
-
-            cmd_id = command_client.robot_command(arm_command)
-
-            block_until_arm_arrives(command_client, cmd_id)
-
-
 def gaze_control(config):
     """Commanding a gaze with Spot's arm."""
 
@@ -376,20 +248,18 @@ def gaze_control(config):
 
         #move-to-start
         #start_x,end_x,start_y,end_y,start_z,end_z
-        traj_data = [4.0,4.0,2.0,-2.0,0.0,0,0]
-        move_data = [0.75,0.75,-0.25,-0.25,0,0]
+        #traj_data = [4.0,4.0,2.0,-2.0,0.0,0,0]
+        #move_data = [0.75,0.75,-0.25,-0.25,0,0]
 
-        #start_x,end_x,start_y,end_y,start_z,end_z
+        ##start_x,end_x,start_y,end_y,start_z,end_z
         #do_stuff(robot,robot_state_client,command_client,traj_data,move_data)
-        stuff(robot,robot_state_client,command_client,"left","right")
-        sleep(1.0)
-        
-        exit()
-        
-
+        #sleep(1.0)
+        #
+        #exit()
 
         model = VisionModel(robot)
-        model.start_taking_images()
+
+
 
         # right-to-left
         #start_x,end_x,start_y,end_y,start_z,end_z
@@ -397,8 +267,7 @@ def gaze_control(config):
         move_data = [0.75,0.75,-0.25,0.25,0,0]
 
         #start_x,end_x,start_y,end_y,start_z,end_z
-        do_stuff(robot,robot_state_client,command_client,traj_data,move_data)
-        sleep(1.0)
+        do_stuff(model,robot,robot_state_client,command_client,traj_data,move_data)
 
         # left-to-right
         #start_x,end_x,start_y,end_y,start_z,end_z
@@ -406,8 +275,7 @@ def gaze_control(config):
         move_data = [0.75,0.75,0.25,-0.25,0,0]
 
         #start_x,end_x,start_y,end_y,start_z,end_z
-        do_stuff(robot,robot_state_client,command_client,traj_data,move_data)
-        sleep(1.0)
+        do_stuff(model,robot,robot_state_client,command_client,traj_data,move_data)
 
         # right-to-upcenter
         #start_x,end_x,start_y,end_y,start_z,end_z
@@ -415,8 +283,7 @@ def gaze_control(config):
         move_data = [0.75,0.75,-0.25,0,0,0.25]
 
         #start_x,end_x,start_y,end_y,start_z,end_z
-        do_stuff(robot,robot_state_client,command_client,traj_data,move_data)
-        sleep(1.0)
+        do_stuff(model,robot,robot_state_client,command_client,traj_data,move_data)
 
         # upcenter-to-right
         #start_x,end_x,start_y,end_y,start_z,end_z
@@ -424,8 +291,7 @@ def gaze_control(config):
         move_data = [0.75,0.75,0,-0.25,0.25,0]
 
         #start_x,end_x,start_y,end_y,start_z,end_z
-        do_stuff(robot,robot_state_client,command_client,traj_data,move_data)
-        sleep(1.0)
+        do_stuff(model,robot,robot_state_client,command_client,traj_data,move_data)
 
         # right-to-left
         #start_x,end_x,start_y,end_y,start_z,end_z
@@ -433,8 +299,7 @@ def gaze_control(config):
         move_data = [0.75,0.75,-0.25,0.25,0,0]
 
         #start_x,end_x,start_y,end_y,start_z,end_z
-        do_stuff(robot,robot_state_client,command_client,traj_data,move_data)
-        sleep(1.0)
+        do_stuff(model,robot,robot_state_client,command_client,traj_data,move_data)
 
         # left-to-upcenter
         #start_x,end_x,start_y,end_y,start_z,end_z
@@ -442,8 +307,7 @@ def gaze_control(config):
         move_data = [0.75,0.75,0.25,0.0,0.0,0.25]
 
         #start_x,end_x,start_y,end_y,start_z,end_z
-        do_stuff(robot,robot_state_client,command_client,traj_data,move_data)
-        sleep(1.0)
+        do_stuff(model,robot,robot_state_client,command_client,traj_data,move_data)
 
         # upcenter-to-left
         #start_x,end_x,start_y,end_y,start_z,end_z
@@ -451,13 +315,9 @@ def gaze_control(config):
         move_data = [0.75,0.75,0.0,0.25,0.25,0.0]
 
         #start_x,end_x,start_y,end_y,start_z,end_z
-        do_stuff(robot,robot_state_client,command_client,traj_data,move_data)
-        sleep(1.0)
+        do_stuff(model,robot,robot_state_client,command_client,traj_data,move_data)
 
-        model.stop_taking_images()
-        sleep(1.0)
-
-
+        model.data_capture_model.write_to_file()
 
         # Power the robot off. By specifying "cut_immediately=False", a safe power off command
         # is issued to the robot. This will attempt to sit the robot before powering off.
