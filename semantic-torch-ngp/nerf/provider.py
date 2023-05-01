@@ -2,6 +2,7 @@ import os
 import cv2
 import glob
 import json
+import pickle
 from cv2 import transform
 import tqdm
 import numpy as np
@@ -193,19 +194,28 @@ class NeRFDataset:
             self.poses = []
             self.images = []
             self.semantics= []
+            with open(os.path.join(self.root_path,'semantic_labels.pkl'), 'rb') as handle:
+                semantic_dictionary = pickle.load(handle)
             for f in tqdm.tqdm(frames, desc=f'Loading {type} data'):
                 f_path = os.path.join(self.root_path, f['file_path'])
                 if self.mode == 'blender' and '.' not in os.path.basename(f_path):
                     f_path += '.png' # so silly...
 
                 #TODO: this should be in transforms.json
-                semantic_f_path = f_path.replace("rgb","semantic_class")
-                semantic_f_path = semantic_f_path.replace("images","semantic_class")
+                semantic_filename = f_path.replace(os.path.join(self.root_path,"./images/"),"")
+                # print(f_path)
+                # print(semantic_filename)
+                #semantic_f_path = f_path.replace("rgb","semantic_class")
+                #semantic_f_path = semantic_f_path.replace("images","semantic_class")
+                semantic_f_path = f_path.replace("images","segments")
                 #semantic_f_path = f_path
 
 
                 # there are non-exist paths in fox...
                 if not os.path.exists(f_path):
+                    print("error loading data. skipping")
+                    continue
+                if not semantic_filename in semantic_dictionary.keys():
                     print("error loading data. skipping")
                     continue
                 if not os.path.exists(semantic_f_path):
@@ -217,7 +227,28 @@ class NeRFDataset:
 
                 image = cv2.imread(f_path, cv2.IMREAD_UNCHANGED) # [H, W, 3] o [H, W, 4]
                 semantic = cv2.imread(semantic_f_path, cv2.IMREAD_UNCHANGED)
+                print(semantic_f_path)
+                #print(semantic_dictionary[semantic_filename])
 
+                # semantic_lists = semantic_dictionary[semantic_filename][1]
+                #
+                # tmp_semantic = semantic_dictionary[semantic_filename][0].detach().cpu().numpy().astype(np.uint8)
+                # semantic = np.zeros((*tmp_semantic.shape, 3))
+                #
+                # for idx,mapping_list in enumerate(semantic_lists):
+                #     id = mapping_list["category_id"]
+                #     semantic[tmp_semantic == idx + 1] = mapping_list["category_id"]
+                #     #semantic[tmp_semantic == idx + 1] = [id / 255.,id / 255.,id/ 255.] 
+
+                #semantic = semantics[semantic_filename]
+
+
+                #print(semantic_filename)
+                #cv2.imshow("semantic", semantic)
+                #cv2.waitKey(0)
+
+                #cv2.imshow("image", image)
+                #cv2.waitKey(0)
                 if self.H is None or self.W is None:
                     self.H = image.shape[0] // downscale
                     self.W = image.shape[1] // downscale

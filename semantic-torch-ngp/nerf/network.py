@@ -18,12 +18,12 @@ class NeRFNetwork(NeRFRenderer):
                  num_layers_color=3,
                  hidden_dim_color=64,
                  num_layers_semantic=3,
-                 hidden_dim_semantic=128,
+                 hidden_dim_semantic=64,
                  num_layers_bg=2,
                  hidden_dim_bg=64,
                  bound=1,
                  use_semantics = True,
-                 num_semantic_classes = 100,
+                 num_semantic_classes = 10,
                  **kwargs,
                  ):
         super().__init__(bound, **kwargs)

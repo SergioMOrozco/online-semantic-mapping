@@ -11,26 +11,30 @@ import matplotlib.pyplot as plt
 
 # Load the pre-trained model
 cfg = get_cfg()
+cfg.MODEL.RETINANET.SCORE_THRESH_TEST = 0.9 
+cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.9 
+cfg.MODEL.PANOPTIC_FPN.COMBINE.INSTANCES_CONFIDENCE_THRESH = 0.9
+#cfg.MODEL.TENSOR_MASK.SCORE_THRESH_TEST = 0.9
 # add project-specific config (e.g., TensorMask) here if you're not running a model in detectron2's core library
 cfg.merge_from_file(model_zoo.get_config_file("COCO-PanopticSegmentation/panoptic_fpn_R_50_3x.yaml"))
-cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.5  # set threshold for this model
+#cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.5  # set threshold for this model
 # Find a model from detectron2's model zoo. You can use the https://dl.fbaipublicfiles... url as well
 cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-PanopticSegmentation/panoptic_fpn_R_50_3x.yaml")
 predictor = DefaultPredictor(cfg)
 
 # Load the image
-image = cv2.imread("./data/nerf/lab_med/images/0.png")
+image = cv2.imread("../data/nerf/test/images/0.png")
 # Perform inference
 outputs = predictor(image)
 
 # Visualize the results
 v = Visualizer(image[:, :, ::-1], MetadataCatalog.get(cfg.DATASETS.TRAIN[0]), scale=1.2)
 outputs["panoptic_seg"][0].cpu()
-out = v.draw_panoptic_seg(outputs["panoptic_seg"][0], outputs["panoptic_seg"][1])
+out = v.draw_panoptic_seg(outputs["panoptic_seg"][0].cpu(), outputs["panoptic_seg"][1])
 #cv2.imshow("Semantic Segmentation", out.get_image()[:, :, ::-1])
 #cv2.waitKey(0)
 
-file_list = os.listdir("./data/nerf/lab_med/images")
+file_list = os.listdir("../data/nerf/test/images")
 
 #print(outputs['panoptic_seg'][0])
 #cv2.imshow("Sem seg", outputs['panoptic_seg'][0])
@@ -40,15 +44,16 @@ file_list = os.listdir("./data/nerf/lab_med/images")
 
 f_labels = {}
 
-out_dir = "./data/nerf/lab_med/{}"
+out_dir = "../data/nerf/test/{}"
 
 for fl in file_list:
     image = cv2.imread(out_dir.format("images/"+fl))
     outputs = predictor(image)
     v = Visualizer(image[:, :, ::-1], MetadataCatalog.get(cfg.DATASETS.TRAIN[0]), scale=1.2)
     outputs["panoptic_seg"][0].cpu()
-    f_labels[fl] = outputs["panoptic_seg"][0]
-    out = v.draw_panoptic_seg(outputs["panoptic_seg"][0], outputs["panoptic_seg"][1])
+    #f_labels[fl] = outputs["panoptic_seg"][0]
+    f_labels[fl] = (outputs["panoptic_seg"][0], outputs["panoptic_seg"][1])
+    out = v.draw_panoptic_seg(outputs["panoptic_seg"][0].cpu(), outputs["panoptic_seg"][1])
     #cv2.imshow("Semantic Segmentation", out.get_image()[:, :, ::-1])
     #cv2.waitKey(0)
     cv2.imwrite(out_dir.format("segments/"+fl), out.get_image()[:, :, ::-1])

@@ -34,7 +34,7 @@ import lpips
 from torchmetrics.functional import structural_similarity_index_measure
 
 
-SEMANTIC_CLASS_NUM = 100
+SEMANTIC_CLASS_NUM = 10
 
 def custom_meshgrid(*args):
     # ref: https://pytorch.org/docs/stable/generated/torch.meshgrid.html?highlight=meshgrid#torch.meshgrid
@@ -605,8 +605,8 @@ class Trainer(object):
             # put back
             self.error_map[index] = error_map
 
-        #loss = loss + ( 0.04 * loss_semantic)
-        loss = loss + (0.005 * loss_semantic)
+        loss = loss + ( 0.004 * loss_semantic)
+        #loss = loss + (0.005 * loss_semantic)
         #loss = loss_semantic 
         #loss = loss + loss_semantic
 

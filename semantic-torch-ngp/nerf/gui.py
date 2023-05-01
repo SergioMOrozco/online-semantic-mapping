@@ -57,10 +57,16 @@ class NeRFGUI:
         self.random_colors = list([np.random.choice(range(256), size=3) for i in range (150)])
 
         self.random_colors[0] = [256,256,256]
-        self.random_colors[1] = [244, 35,232]
-        self.random_colors[2] = [ 70, 70, 70]
-        self.random_colors[3] = [102,102,156]
-        self.random_colors[4] = [190,153,153]
+        self.random_colors[1] = [256,0,0] # blue
+        self.random_colors[2] = [0,255,0] # green
+        self.random_colors[3] = [0,0,255] # red
+        self.random_colors[4] = [0,255,255] # yellow
+        self.random_colors[5] = [240,32,160] # purple
+        self.random_colors[6] = [0,75,150] # brown
+        self.random_colors[7] = [203,192,255] # pink
+        self.random_colors[8] = [100,100,100] # grey
+        self.random_colors[9] = [31,95,255] # orange
+        self.random_colors[10] = [128,128,0]
 
         self.opt = opt # shared with the trainer's opt to support in-place modification of rendering parameters.
         self.W = opt.W
@@ -149,7 +155,6 @@ class NeRFGUI:
             # cv2.waitKey(1)
             #
             # return img_color / 255.
-
             img = outputs['semantic']
 
             img_color = np.zeros((*img.shape, 3))
@@ -160,7 +165,6 @@ class NeRFGUI:
 
             cv2.imshow("img",img_color / 255.)
             cv2.waitKey(1)
-
             return np.expand_dims(outputs['semantic'] / 255., -1).repeat(3, -1)
 
     
