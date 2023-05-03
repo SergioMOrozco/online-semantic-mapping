@@ -1,3 +1,4 @@
 trial*/
 *.pyc
 *semantic_labels.pkl
+*.pth

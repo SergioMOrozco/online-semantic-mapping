@@ -28,7 +28,7 @@ from google.protobuf import wrappers_pb2
 from bosdyn.client.gripper_camera_param import GripperCameraParamClient
 
 
-HOSTNAME = "tusker.rlab.cs.brown.edu"
+HOSTNAME = "gouger.rlab.cs.brown.edu"
 
 
 def do_stuff(model,robot,robot_state_client,command_client,traj_data,move_data):
@@ -246,53 +246,7 @@ def gaze_control(config):
 
         block_until_arm_arrives(command_client, unstow_command_id, 3.0)
 
-        #move-to-start
-        #start_x,end_x,start_y,end_y,start_z,end_z
-        #traj_data = [4.0,4.0,2.0,-2.0,0.0,0,0]
-        #move_data = [0.75,0.75,-0.25,-0.25,0,0]
-
-        ##start_x,end_x,start_y,end_y,start_z,end_z
-        #do_stuff(robot,robot_state_client,command_client,traj_data,move_data)
-        #sleep(1.0)
-        #
-        #exit()
-
         model = VisionModel(robot)
-
-
-
-        # right-to-left
-        #start_x,end_x,start_y,end_y,start_z,end_z
-        traj_data = [4.0,4.0,2.0,-2.0,0.0,0,0]
-        move_data = [0.75,0.75,-0.25,0.25,0,0]
-
-        #start_x,end_x,start_y,end_y,start_z,end_z
-        do_stuff(model,robot,robot_state_client,command_client,traj_data,move_data)
-
-        # left-to-right
-        #start_x,end_x,start_y,end_y,start_z,end_z
-        traj_data = [4.0,4.0,-2.0,2.0,0.0,0,0]
-        move_data = [0.75,0.75,0.25,-0.25,0,0]
-
-        #start_x,end_x,start_y,end_y,start_z,end_z
-        do_stuff(model,robot,robot_state_client,command_client,traj_data,move_data)
-
-        # right-to-upcenter
-        #start_x,end_x,start_y,end_y,start_z,end_z
-        traj_data = [4.0,4.0,2.0,0.0,0,-2]
-        move_data = [0.75,0.75,-0.25,0,0,0.25]
-
-        #start_x,end_x,start_y,end_y,start_z,end_z
-        do_stuff(model,robot,robot_state_client,command_client,traj_data,move_data)
-
-        # upcenter-to-right
-        #start_x,end_x,start_y,end_y,start_z,end_z
-        traj_data = [4.0,4.0,0,2.0,-2,0]
-        move_data = [0.75,0.75,0,-0.25,0.25,0]
-
-        #start_x,end_x,start_y,end_y,start_z,end_z
-        do_stuff(model,robot,robot_state_client,command_client,traj_data,move_data)
-
         # right-to-left
         #start_x,end_x,start_y,end_y,start_z,end_z
         traj_data = [4.0,4.0,2.0,-2.0,0.0,0,0]
@@ -309,15 +263,79 @@ def gaze_control(config):
         #start_x,end_x,start_y,end_y,start_z,end_z
         do_stuff(model,robot,robot_state_client,command_client,traj_data,move_data)
 
-        # upcenter-to-left
+        # upcenter-to-right
         #start_x,end_x,start_y,end_y,start_z,end_z
-        traj_data = [4.0,4.0,0.0,-2,-2.0,0.0]
-        move_data = [0.75,0.75,0.0,0.25,0.25,0.0]
+        traj_data = [4.0,4.0,0,2.0,-2,0]
+        move_data = [0.75,0.75,0,-0.25,0.25,0]
 
         #start_x,end_x,start_y,end_y,start_z,end_z
         do_stuff(model,robot,robot_state_client,command_client,traj_data,move_data)
 
-        model.data_capture_model.write_to_file()
+
+
+
+
+
+
+
+
+        ## right-to-left
+        ##start_x,end_x,start_y,end_y,start_z,end_z
+        #traj_data = [4.0,4.0,2.0,-2.0,0.0,0,0]
+        #move_data = [0.75,0.75,-0.25,0.25,0,0]
+
+        ##start_x,end_x,start_y,end_y,start_z,end_z
+        #do_stuff(model,robot,robot_state_client,command_client,traj_data,move_data)
+
+        ## left-to-right
+        ##start_x,end_x,start_y,end_y,start_z,end_z
+        #traj_data = [4.0,4.0,-2.0,2.0,0.0,0,0]
+        #move_data = [0.75,0.75,0.25,-0.25,0,0]
+
+        ##start_x,end_x,start_y,end_y,start_z,end_z
+        #do_stuff(model,robot,robot_state_client,command_client,traj_data,move_data)
+
+        ## right-to-upcenter
+        ##start_x,end_x,start_y,end_y,start_z,end_z
+        #traj_data = [4.0,4.0,2.0,0.0,0,-2]
+        #move_data = [0.75,0.75,-0.25,0,0,0.25]
+
+        ##start_x,end_x,start_y,end_y,start_z,end_z
+        #do_stuff(model,robot,robot_state_client,command_client,traj_data,move_data)
+
+        ## upcenter-to-right
+        ##start_x,end_x,start_y,end_y,start_z,end_z
+        #traj_data = [4.0,4.0,0,2.0,-2,0]
+        #move_data = [0.75,0.75,0,-0.25,0.25,0]
+
+        ##start_x,end_x,start_y,end_y,start_z,end_z
+        #do_stuff(model,robot,robot_state_client,command_client,traj_data,move_data)
+
+        ## right-to-left
+        ##start_x,end_x,start_y,end_y,start_z,end_z
+        #traj_data = [4.0,4.0,2.0,-2.0,0.0,0,0]
+        #move_data = [0.75,0.75,-0.25,0.25,0,0]
+
+        ##start_x,end_x,start_y,end_y,start_z,end_z
+        #do_stuff(model,robot,robot_state_client,command_client,traj_data,move_data)
+
+        ## left-to-upcenter
+        ##start_x,end_x,start_y,end_y,start_z,end_z
+        #traj_data = [4.0,4.0,-2.0,0.0,0.0,-2]
+        #move_data = [0.75,0.75,0.25,0.0,0.0,0.25]
+
+        ##start_x,end_x,start_y,end_y,start_z,end_z
+        #do_stuff(model,robot,robot_state_client,command_client,traj_data,move_data)
+
+        ## upcenter-to-left
+        ##start_x,end_x,start_y,end_y,start_z,end_z
+        #traj_data = [4.0,4.0,0.0,-2,-2.0,0.0]
+        #move_data = [0.75,0.75,0.0,0.25,0.25,0.0]
+
+        ##start_x,end_x,start_y,end_y,start_z,end_z
+        #do_stuff(model,robot,robot_state_client,command_client,traj_data,move_data)
+
+        #model.data_capture_model.write_to_file()
 
         # Power the robot off. By specifying "cut_immediately=False", a safe power off command
         # is issued to the robot. This will attempt to sit the robot before powering off.

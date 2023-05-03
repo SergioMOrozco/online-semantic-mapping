@@ -194,8 +194,8 @@ class NeRFDataset:
             self.poses = []
             self.images = []
             self.semantics= []
-            with open(os.path.join(self.root_path,'semantic_labels.pkl'), 'rb') as handle:
-                semantic_dictionary = pickle.load(handle)
+            #with open(os.path.join(self.root_path,'semantic_labels.pkl'), 'rb') as handle:
+            #    semantic_dictionary = pickle.load(handle)
             for f in tqdm.tqdm(frames, desc=f'Loading {type} data'):
                 f_path = os.path.join(self.root_path, f['file_path'])
                 if self.mode == 'blender' and '.' not in os.path.basename(f_path):
@@ -215,10 +215,11 @@ class NeRFDataset:
                 if not os.path.exists(f_path):
                     print("error loading data. skipping")
                     continue
-                if not semantic_filename in semantic_dictionary.keys():
-                    print("error loading data. skipping")
-                    continue
+                #if not semantic_filename in semantic_dictionary.keys():
+                #    print("error loading data. skipping")
+                #    continue
                 if not os.path.exists(semantic_f_path):
+                    print("Could not load" + semantic_f_path)
                     print("error loading data. skipping")
                     continue
                 

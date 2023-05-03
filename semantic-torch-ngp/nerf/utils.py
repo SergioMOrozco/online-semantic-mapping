@@ -605,8 +605,8 @@ class Trainer(object):
             # put back
             self.error_map[index] = error_map
 
-        loss = loss + ( 0.004 * loss_semantic)
-        #loss = loss + (0.005 * loss_semantic)
+        #loss = loss + ( 0.04 * loss_semantic)
+        loss = loss + (0.001 * loss_semantic)
         #loss = loss_semantic 
         #loss = loss + loss_semantic
 
@@ -917,8 +917,8 @@ class Trainer(object):
         return outputs
 
     def train_one_epoch(self, loader):
-        print("does this happend?")
-        exit()
+        #print("does this happend?")
+        #exit()
         self.log(f"==> Start Training Epoch {self.epoch}, lr={self.optimizer.param_groups[0]['lr']:.6f} ...")
 
         total_loss = 0
@@ -952,7 +952,7 @@ class Trainer(object):
 
             with torch.cuda.amp.autocast(enabled=self.fp16):
                 #NOTE: do something with semantic loss here
-                preds, truths, loss = self.train_step(data)
+                preds, truths,_,_, loss = self.train_step(data)
          
             self.scaler.scale(loss).backward()
             self.scaler.step(self.optimizer)

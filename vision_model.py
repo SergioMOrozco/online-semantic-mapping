@@ -15,10 +15,10 @@ from bosdyn.client import frame_helpers
 from bosdyn.client import math_helpers
 from bosdyn.client.network_compute_bridge_client import NetworkComputeBridgeClient
 from bosdyn.client.graph_nav import GraphNavClient
-from data_capture.data_capture_model import DataCaptureModel
 from bosdyn.client.frame_helpers import get_a_tform_b
 from scipy.spatial.transform import Rotation
 from bosdyn.client.math_helpers import Quat
+from data_capture.data_capture_model import DataCaptureModel
 
 MODEL_NAME = "handle-model"
 HAND_MODEL = 'object-hand-model'
@@ -110,8 +110,8 @@ class VisionModel:
         tmpy = vision_tform_hand.y
         tmpz = vision_tform_hand.z
 
-        vision_tform_hand.x = tmpy * -1.0 * 10.0
-        vision_tform_hand.y = tmpz * 10.0
+        vision_tform_hand.x = tmpy * -1.0 * 20.0
+        vision_tform_hand.y = tmpz * 20.0
         vision_tform_hand.z = tmpx * -1.0
 
         rtmpx = vision_tform_hand.rot.x
