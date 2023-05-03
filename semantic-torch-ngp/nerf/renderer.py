@@ -324,7 +324,8 @@ class NeRFRenderer(nn.Module):
         #TODO: Add softmax to semantic image
         #softmax = nn.Softmax(dim=2)
 
-        semantic_image = torch.sigmoid(semantic_image)
+        #semantic_image = torch.sigmoid(semantic_image)
+        #semantic_image = softmax(semantic_image)
 
         results['depth'] = depth
         results['semantic'] = semantic_image

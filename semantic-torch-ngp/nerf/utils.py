@@ -542,7 +542,6 @@ class Trainer(object):
         gt_semantics = gt_semantics.to(torch.int64)
         gt_semantics = torch.nn.functional.one_hot(gt_semantics, num_classes = SEMANTIC_CLASS_NUM)
         gt_semantics = torch.squeeze(gt_semantics,2)
-        #gt_semantics = gt_semantics.view(gt_semantics.shape[0],gt_semantics.shape[1])
         gt_semantics = gt_semantics.float()
 
         # print("RGB")
@@ -552,7 +551,21 @@ class Trainer(object):
         # print("PRED")
         # print(pred_rgb)
         # print(pred_rgb.shape)
+        #gt_semantics = gt_semantics.argmax(axis=2)
+
+        # pred_semantic = pred_semantic.view(pred_semantic.shape[0],pred_semantic.shape[2],pred_semantic.shape[1])
+        # gt_semantics= gt_semantics.view(gt_semantics.shape[0],gt_semantics.shape[2],gt_semantics.shape[1])
+
+
+        pred_semantic = pred_semantic.squeeze()
+        gt_semantics= gt_semantics.squeeze()
+
+        #pred_semantic = pred_semantic.permute(1,0)
+        # gt_semantics= gt_semantics.permute(1,0)
         #
+        gt_semantics = gt_semantics.argmax(axis=1)
+
+
         # print("SEMANTIC")
         # print ("GT")
         # print(gt_semantics)
@@ -561,9 +574,21 @@ class Trainer(object):
         # print(pred_semantic)
         # print(pred_semantic.shape)
 
+        #loss_semantic= self.semantic_criterion(pred_semantic, gt_semantics).mean(-1) # [B, N, 3] --> [B, N]
+        loss_semantic= self.semantic_criterion(pred_semantic, gt_semantics)
 
+        #loss_semantic[gt_semantics == 0] *= 0.1
+        loss_semantic[gt_semantics == 0] *= 0.5
 
-        loss_semantic= self.semantic_criterion(pred_semantic, gt_semantics).mean(-1) # [B, N, 3] --> [B, N]
+        loss_semantic = loss_semantic.mean(-1)
+
+        # print(loss_semantic)
+        # print(loss_semantic.shape)
+        # exit()
+
+        # print ("SEMANTIC LOSS")
+        # print(loss_semantic)
+        # print(loss_semantic.shape)
 
         # patch-based rendering
         if self.opt.patch_size > 1:
@@ -890,10 +915,42 @@ class Trainer(object):
             preds = linear_to_srgb(preds)
             #preds_semantic = linear_to_srgb(preds_semantic)
 
+        #Do Softmax, then mask anything that is below 50%
+        softmax = nn.Softmax(dim=3)
+
+        preds_semantic = softmax(preds_semantic)
+
         pred_semantic = preds_semantic[0].detach().cpu().numpy()
 
 
+        print("BEFORE")
+        print(pred_semantic)
+        print(pred_semantic.shape)
+
+        #pred_semantic[:][:][pred_semantic < 0.5] = np.zeros(SEMANTIC_CLASS_NUM)
+        pred_semantic[pred_semantic < 0.1] = 0 
+
+        # HERE
+        print("AFTER")
+        print(pred_semantic)
+        print(pred_semantic.shape)
+
+
+        # masked_pred = np.zeros_like(pred_semantic)
+        #
+        # # HERE
+        # print(masked_pred)
+        # print(masked_pred.shape)
+        #
+        # masked_pred[pred_semantic < 0.5] = np.zeros(SEMANTIC_CLASS_NUM)
+        #
+        # pred_semantic = masked_pred
+
+
+
+
         pred_semantic = pred_semantic.argmax(axis=2)
+
 
 
         pred = preds[0].detach().cpu().numpy()
