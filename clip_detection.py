@@ -5,6 +5,7 @@ import numpy as np
 import os
 from PIL import Image
 from segment_anything import SamAutomaticMaskGenerator, sam_model_registry
+torch.cuda.empty_cache()
 
 #img = cv2.imread("24.png")
 #img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
