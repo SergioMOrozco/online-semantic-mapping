@@ -6,26 +6,11 @@
 - CLIP
 - Segment Anything
 
-### Installing Bosdyn SDK
+## Running the robot
+./run_robot.sh
 
-- You can get more information about the Bosdyn SDK here:
-    - https://dev.bostondynamics.com/docs/python/quickstart
+## Running Segmentation Code
+./run_segmentation
 
-- You can install the SDK like so:
-```
-python3 -m pip install --upgrade bosdyn-client bosdyn-mission bosdyn-choreography-client
-```
-
-### Setting up hostname for Bosdyn SDK
-
-- Specify the hostname and password for the spot robot in your ~/.bashrc file like so:
-```
-export BOSDYN_CLIENT_USERNAME="user"
-export BOSDYN_CLIENT_PASSWORD="[ask me for password]"
-```
-
-## Running the application
-- The application can be run with the following:
-```
-./run_app.sh
-```
+## Running Semantic Torch Ngp Code
+./run_nerf_gui.sh
