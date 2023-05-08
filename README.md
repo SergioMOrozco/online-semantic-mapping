@@ -3,7 +3,8 @@
 ## Pre-requisites
 - python 3.8.16
 - Bosdyn SDK
-- tmux
+- CLIP
+- Segment Anything
 
 ### Installing Bosdyn SDK
 
