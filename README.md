@@ -1,6 +1,7 @@
 # Online Semantic Scene Representation Using Neural Fields
    In the field of robotics, strong perception systems that capture visual and meaningful information about scenes would prove to be useful for many downstream tasks. Furthermore, these scene representations must be generated online in a matter of minutes, as opposed to hours or days. For our final project, we present Online Semantic Scene Representations Using Neural Fields, a method for generating semantic and photometric scene representations that leverages multi-resolution hash encodings to significantly speed up training over previous methods.
-
+## 
+- Report on implementation details with qualitative results: [Online Semantic Segmentation Using Neural Fields](report.pdf)
 ## Pre-requisites
 - python 3.8.16
 - Bosdyn SDK https://dev.bostondynamics.com/docs/python/quickstart#pip-installation
